@@ -107,12 +107,12 @@ export default function Home() {
 
       {/* Side Menu Button */}
       <motion.button
-        initial={{ opacity: 0.4 }}
-        animate={{ opacity: 0.4 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0 }}
         whileHover={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
         onClick={() => setMenuOpen(!menuOpen)}
-        className="fixed right-8 top-6 z-50 flex flex-col gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md p-4 rounded-full border border-white/20 transition-colors"
+        className="fixed left-8 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md p-4 rounded-full border border-white/20 transition-colors cursor-pointer"
       >
         <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2 origin-center' : ''}`} />
         <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2 origin-center' : ''}`} />
