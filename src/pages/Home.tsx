@@ -107,8 +107,8 @@ export default function Home() {
 
       {/* Side Menu Button */}
       <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0 }}
+        initial={{ opacity: 0.4 }}
+        animate={{ opacity: 0.4 }}
         whileHover={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
         onClick={() => setMenuOpen(!menuOpen)}
