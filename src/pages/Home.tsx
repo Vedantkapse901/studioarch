@@ -112,7 +112,7 @@ export default function Home() {
         whileHover={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
         onClick={() => setMenuOpen(!menuOpen)}
-        className="fixed left-8 top-1/2 -translate-y-1/2 z-40 flex flex-col gap-2 bg-white/10 backdrop-blur-md p-4 rounded-full border border-white/20"
+        className="fixed right-8 top-6 z-50 flex flex-col gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md p-4 rounded-full border border-white/20 transition-colors"
       >
         <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2 origin-center' : ''}`} />
         <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2 origin-center' : ''}`} />
@@ -127,7 +127,7 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -300 }}
             transition={{ duration: 0.3 }}
-            className="fixed left-0 top-0 h-screen w-64 bg-black/95 backdrop-blur-md text-white z-30 flex flex-col justify-center px-8 border-r border-white/10"
+            className="fixed left-0 top-0 h-screen w-64 bg-black/95 backdrop-blur-md text-white z-40 flex flex-col justify-center px-8 border-r border-white/10"
           >
             <div className="space-y-12">
               <Link
@@ -164,7 +164,7 @@ export default function Home() {
       </AnimatePresence>
 
       {/* Auto-Carousel Section - Layered Onion Peeling Effect */}
-      <section className="relative h-screen w-full overflow-hidden sticky top-0 bg-black z-30">
+      <section className="relative h-screen w-full overflow-hidden sticky top-0 bg-black z-10">
         {/* Background/Next Image Layer */}
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
