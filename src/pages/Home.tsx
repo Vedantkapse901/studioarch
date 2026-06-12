@@ -111,11 +111,15 @@ export default function Home() {
         animate={{ opacity: 0.5 }}
         whileHover={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
-        onClick={() => setMenuOpen(!menuOpen)}
-        className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 md:p-4 rounded-full border border-white/20 transition-colors cursor-pointer"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setMenuOpen(!menuOpen);
+        }}
+        className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 md:p-4 rounded-full border border-white/20 transition-colors cursor-pointer pointer-events-auto"
       >
-        <span className={`w-5 md:w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2 origin-center' : ''}`} />
-        <span className={`w-5 md:w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2 origin-center' : ''}`} />
+        <span className={`w-5 md:w-6 h-0.5 bg-white transition-all duration-300 pointer-events-none ${menuOpen ? 'rotate-45 translate-y-2 origin-center' : ''}`} />
+        <span className={`w-5 md:w-6 h-0.5 bg-white transition-all duration-300 pointer-events-none ${menuOpen ? '-rotate-45 -translate-y-2 origin-center' : ''}`} />
       </motion.button>
 
       {/* Side Menu */}
