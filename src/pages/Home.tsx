@@ -99,23 +99,23 @@ export default function Home() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="fixed top-6 right-8 z-40 bg-black/60 backdrop-blur-md px-6 py-3 rounded-full hover:opacity-80 transition-opacity border border-white/20"
+          className="fixed top-4 md:top-6 right-4 md:right-8 z-40 bg-black/60 backdrop-blur-md px-4 md:px-6 py-2 md:py-3 rounded-full hover:opacity-80 transition-opacity border border-white/20"
         >
-          <h1 className="text-xl font-light tracking-widest uppercase text-white">1StudioArch</h1>
+          <h1 className="text-sm md:text-xl font-light tracking-widest uppercase text-white">1StudioArch</h1>
         </motion.div>
       </Link>
 
       {/* Side Menu Button */}
       <motion.button
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 0 }}
+        initial={{ opacity: 0.5 }}
+        animate={{ opacity: 0.5 }}
         whileHover={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
         onClick={() => setMenuOpen(!menuOpen)}
-        className="fixed left-8 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md p-4 rounded-full border border-white/20 transition-colors cursor-pointer"
+        className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 md:p-4 rounded-full border border-white/20 transition-colors cursor-pointer"
       >
-        <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2 origin-center' : ''}`} />
-        <span className={`w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2 origin-center' : ''}`} />
+        <span className={`w-5 md:w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2 origin-center' : ''}`} />
+        <span className={`w-5 md:w-6 h-0.5 bg-white transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2 origin-center' : ''}`} />
       </motion.button>
 
       {/* Side Menu */}
@@ -127,34 +127,34 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -300 }}
             transition={{ duration: 0.3 }}
-            className="fixed left-0 top-0 h-screen w-64 bg-black/95 backdrop-blur-md text-white z-40 flex flex-col justify-center px-8 border-r border-white/10"
+            className="fixed left-0 top-0 h-screen w-56 md:w-64 bg-black/95 backdrop-blur-md text-white z-40 flex flex-col justify-center px-6 md:px-8 border-r border-white/10"
           >
-            <div className="space-y-12">
+            <div className="space-y-8 md:space-y-12">
               <Link
                 to="/projects"
                 onClick={() => setMenuOpen(false)}
-                className="text-2xl font-light tracking-widest uppercase hover:opacity-60 transition-opacity block"
+                className="text-xl md:text-2xl font-light tracking-widest uppercase hover:opacity-60 transition-opacity block"
               >
                 Projects
               </Link>
               <Link
                 to="/philosophy"
                 onClick={() => setMenuOpen(false)}
-                className="text-2xl font-light tracking-widest uppercase hover:opacity-60 transition-opacity block"
+                className="text-xl md:text-2xl font-light tracking-widest uppercase hover:opacity-60 transition-opacity block"
               >
                 Philosophy
               </Link>
               <Link
                 to="/journal"
                 onClick={() => setMenuOpen(false)}
-                className="text-2xl font-light tracking-widest uppercase hover:opacity-60 transition-opacity block"
+                className="text-xl md:text-2xl font-light tracking-widest uppercase hover:opacity-60 transition-opacity block"
               >
                 Journal
               </Link>
               <Link
                 to="/contact"
                 onClick={() => setMenuOpen(false)}
-                className="text-2xl font-light tracking-widest uppercase hover:opacity-60 transition-opacity block"
+                className="text-xl md:text-2xl font-light tracking-widest uppercase hover:opacity-60 transition-opacity block"
               >
                 Contact
               </Link>
