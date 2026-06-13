@@ -3,13 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, X } from 'lucide-react';
 import { useState, useRef } from 'react';
 
-const PROJECTS = [
+export const PROJECTS = [
   {
     id: 1,
     name: "The Obsidian Villa",
     location: "Mykonos, Greece",
     year: "2024",
-    category: "Luxury Residence",
+    category: "Residential",
     description: "A stunning cliffside villa featuring panoramic Aegean views with cutting-edge sustainable architecture and minimalist design.",
     images: [
       "/architecture-1.jpg",
@@ -34,8 +34,8 @@ const PROJECTS = [
     name: "Alpine Retreat",
     location: "Zermatt, Switzerland",
     year: "2024",
-    category: "Hospitality",
-    description: "Exclusive mountain retreat combining traditional Alpine aesthetics with modern luxury amenities.",
+    category: "Hospitals",
+    description: "Exclusive medical facility combining traditional aesthetics with modern healthcare technology.",
     images: [
       "/architecture-4.jpg",
     ],
@@ -46,8 +46,8 @@ const PROJECTS = [
     name: "Lumina Pavilion",
     location: "Kyoto, Japan",
     year: "2022",
-    category: "Cultural",
-    description: "An avant-garde cultural center showcasing the fusion of Eastern philosophy and Western design.",
+    category: "Schools",
+    description: "An avant-garde educational center showcasing the fusion of Eastern philosophy and Western design principles.",
     images: [
       "/architecture-5.jpg",
       "/architecture-1.jpg",
@@ -71,8 +71,8 @@ const PROJECTS = [
     name: "Coastal Living",
     location: "Malibu, California",
     year: "2024",
-    category: "Luxury Residence",
-    description: "Oceanfront masterpiece with breathtaking views and sustainable coastal architecture.",
+    category: "PMC",
+    description: "Premium mixed-use complex with breathtaking views and sustainable architecture.",
     images: [
       "/architecture-3.jpg",
       "/architecture-4.jpg",

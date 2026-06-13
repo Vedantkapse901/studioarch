@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Mail, Instagram, Linkedin, MapPin } from 'lucide-react';
+import { PROJECTS } from './Projects';
 
 const INITIAL_CAROUSEL_IMAGES = [
   "/architecture-1.jpg",
@@ -32,10 +33,45 @@ export default function Home() {
   const [autoCarouselIndex, setAutoCarouselIndex] = useState(0);
   const [autoCarouselActive, setAutoCarouselActive] = useState(true);
   const [hasScrolledPastCarousel, setHasScrolledPastCarousel] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [hoveredProjectId, setHoveredProjectId] = useState<number | null>(null);
+  const fadeTimeoutRef = useRef<{ [key: number]: NodeJS.Timeout }>({});
   const menuRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const toggleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { scrollYProgress, scrollY } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
+
+  // Get unique categories
+  const categories = Array.from(new Set(PROJECTS.map((p) => p.category)));
+
+  // Filter projects based on selected category
+  const filteredProjects = selectedCategory
+    ? PROJECTS.filter((p) => p.category === selectedCategory)
+    : PROJECTS;
+
+  // Handle project hover
+  const handleProjectHoverStart = (projectId: number) => {
+    if (fadeTimeoutRef.current[projectId]) {
+      clearTimeout(fadeTimeoutRef.current[projectId]);
+    }
+    setHoveredProjectId(projectId);
+  };
+
+  const handleProjectHoverEnd = (projectId: number) => {
+    if (hoveredProjectId === projectId) {
+      fadeTimeoutRef.current[projectId] = setTimeout(() => {
+        setHoveredProjectId(null);
+      }, 4000);
+    }
+  };
+
+  // Get grid class for masonry layout
+  const getGridClass = (size: string) => {
+    if (size === 'large') return 'md:col-span-2 md:row-span-2';
+    if (size === 'medium') return 'md:col-span-1 md:row-span-1';
+    return 'md:col-span-1 md:row-span-1';
+  };
 
   // Get current transition variant based on index
   const getCurrentVariant = (index: number) => {
@@ -105,21 +141,25 @@ export default function Home() {
         </motion.div>
       </Link>
 
-      {/* Side Menu Button */}
+      {/* Side Menu Button - Center Position */}
       <motion.button
-        initial={{ opacity: 0.5 }}
-        animate={{ opacity: 0.5 }}
-        whileHover={{ opacity: 1 }}
+        initial={{ opacity: 1 }}
+        animate={{ opacity: menuOpen ? 0 : 1 }}
         transition={{ duration: 0.3 }}
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          setMenuOpen(!menuOpen);
+          if (toggleTimeoutRef.current) clearTimeout(toggleTimeoutRef.current);
+          setMenuOpen(true);
+          toggleTimeoutRef.current = setTimeout(() => {
+            toggleTimeoutRef.current = null;
+          }, 500);
         }}
-        className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 md:p-4 rounded-full border border-white/20 transition-colors cursor-pointer pointer-events-auto"
+        disabled={menuOpen}
+        className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-md p-3 md:p-4 rounded-full border border-white/20 transition-colors cursor-pointer pointer-events-auto disabled:pointer-events-none"
       >
-        <span className={`w-5 md:w-6 h-0.5 bg-white transition-all duration-300 pointer-events-none ${menuOpen ? 'rotate-45 translate-y-2 origin-center' : ''}`} />
-        <span className={`w-5 md:w-6 h-0.5 bg-white transition-all duration-300 pointer-events-none ${menuOpen ? '-rotate-45 -translate-y-2 origin-center' : ''}`} />
+        <span className="w-5 md:w-6 h-0.5 bg-white transition-all duration-300 pointer-events-none" />
+        <span className="w-5 md:w-6 h-0.5 bg-white transition-all duration-300 pointer-events-none" />
       </motion.button>
 
       {/* Side Menu */}
@@ -131,15 +171,15 @@ export default function Home() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -300 }}
             transition={{ duration: 0.3 }}
-            className="fixed left-0 top-0 h-screen w-56 md:w-64 bg-black/95 backdrop-blur-md text-white z-40 flex flex-col justify-center px-6 md:px-8 border-r border-white/10"
+            className="fixed left-0 top-0 h-screen w-56 md:w-64 bg-black/95 backdrop-blur-md text-white z-40 flex flex-col justify-between px-6 md:px-8 border-r border-white/10 py-12"
           >
             <div className="space-y-8 md:space-y-12">
               <Link
-                to="/projects"
+                to="/"
                 onClick={() => setMenuOpen(false)}
                 className="text-xl md:text-2xl font-light tracking-widest uppercase hover:opacity-60 transition-opacity block"
               >
-                Projects
+                Home
               </Link>
               <Link
                 to="/philosophy"
@@ -163,6 +203,23 @@ export default function Home() {
                 Contact
               </Link>
             </div>
+
+            {/* Close Button at Bottom */}
+            <motion.button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (toggleTimeoutRef.current) clearTimeout(toggleTimeoutRef.current);
+                setMenuOpen(false);
+                toggleTimeoutRef.current = setTimeout(() => {
+                  toggleTimeoutRef.current = null;
+                }, 500);
+              }}
+              className="flex flex-col gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-md p-3 md:p-4 rounded-full border border-white/20 transition-colors cursor-pointer pointer-events-auto"
+            >
+              <span className="w-5 md:w-6 h-0.5 bg-white transition-all duration-300 rotate-45 translate-y-2 origin-center pointer-events-none" />
+              <span className="w-5 md:w-6 h-0.5 bg-white transition-all duration-300 -rotate-45 -translate-y-2 origin-center pointer-events-none" />
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -220,6 +277,143 @@ export default function Home() {
             </motion.div>
           </motion.div>
         </AnimatePresence>
+      </section>
+
+      {/* Projects Section */}
+      <section className="relative bg-black py-24 px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Section Title */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            viewport={{ once: true }}
+            className="mb-16"
+          >
+            <h2 className="text-5xl md:text-7xl font-light mb-6">Our Projects</h2>
+            <p className="text-stone-400 text-lg max-w-2xl">
+              Explore our portfolio of architectural masterpieces across diverse sectors
+            </p>
+          </motion.div>
+
+          {/* Category Filters */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.1 }}
+            viewport={{ once: true }}
+            className="mb-12 flex flex-wrap gap-3"
+          >
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setSelectedCategory(null)}
+              className={`px-6 py-2 rounded-full font-light uppercase tracking-widest text-sm transition-all ${
+                selectedCategory === null
+                  ? 'bg-white text-black'
+                  : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
+              }`}
+            >
+              All
+            </motion.button>
+            {categories.map((category) => (
+              <motion.button
+                key={category}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-6 py-2 rounded-full font-light uppercase tracking-widest text-sm transition-all ${
+                  selectedCategory === category
+                    ? 'bg-white text-black'
+                    : 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
+                }`}
+              >
+                {category}
+              </motion.button>
+            ))}
+          </motion.div>
+
+          {/* Projects Masonry Grid */}
+          <motion.div
+            layout
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px] md:auto-rows-[350px]"
+          >
+            {filteredProjects.map((project, idx) => (
+              <motion.div
+                key={project.id}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: idx * 0.1 }}
+                viewport={{ once: true }}
+                className={`${getGridClass(project.size)} cursor-pointer relative overflow-hidden rounded-lg shadow-2xl`}
+                onMouseEnter={() => handleProjectHoverStart(project.id)}
+                onMouseLeave={() => handleProjectHoverEnd(project.id)}
+                onTouchStart={() => handleProjectHoverStart(project.id)}
+                onTouchEnd={() => handleProjectHoverEnd(project.id)}
+              >
+                <Link to="/projects" className="block w-full h-full relative">
+                  <div className="w-full h-full relative bg-black">
+                    {/* Image with opacity control */}
+                    <div className="w-full h-full overflow-hidden">
+                      <motion.img
+                        src={project.images[0]}
+                        alt={project.name}
+                        className="w-full h-full object-cover"
+                        animate={{
+                          opacity: hoveredProjectId === project.id ? 1 : 0.2,
+                          scale: hoveredProjectId === project.id ? 1.08 : 1,
+                        }}
+                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                      />
+                    </div>
+
+                    {/* Gradient Overlay */}
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"
+                      animate={{ opacity: hoveredProjectId === project.id ? 0.7 : 0.4 }}
+                      transition={{ duration: 0.5 }}
+                    />
+
+                    {/* Project Info Overlay */}
+                    <motion.div
+                      className="absolute bottom-0 left-0 right-0 p-6"
+                      animate={{
+                        opacity: hoveredProjectId === project.id ? 1 : 0,
+                        y: hoveredProjectId === project.id ? 0 : 20,
+                      }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <span className="inline-block bg-white/20 text-white px-3 py-1 text-xs uppercase tracking-widest rounded mb-3 border border-white/20">
+                        {project.category}
+                      </span>
+                      <h3 className="text-xl font-light mb-2 text-white">{project.name}</h3>
+                      <p className="text-sm text-stone-300">{project.location} • {project.year}</p>
+                    </motion.div>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* View All Button */}
+          {selectedCategory && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-12 text-center"
+            >
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSelectedCategory(null)}
+                className="border border-white/20 text-white px-8 py-3 rounded-lg font-light uppercase tracking-widest hover:bg-white/10 transition-colors"
+              >
+                View All Projects
+              </motion.button>
+            </motion.div>
+          )}
+        </div>
       </section>
 
       {/* Footer */}
