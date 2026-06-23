@@ -9,9 +9,9 @@
  *   npm run dev
  */
 
-const express = require('express');
-const cors = require('cors');
-const crypto = require('crypto');
+import express from 'express';
+import cors from 'cors';
+import crypto from 'crypto';
 
 const app = express();
 const PORT = 3001;
@@ -135,7 +135,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'B2 Upload Server Running' });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════╗
 ║  B2 Upload Dev Server Running          ║
@@ -149,3 +149,5 @@ app.listen(PORT, () => {
 ╚════════════════════════════════════════╝
   `);
 });
+
+export default server;
