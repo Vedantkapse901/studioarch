@@ -87,10 +87,10 @@ export default function Events() {
                       className="rounded-lg overflow-hidden bg-stone-900 border border-white/10 hover:border-white/20 transition-colors"
                     >
                       <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                        {video.youtubeId && (
+                        {video.youtube_id && (
                           <iframe
                             className="absolute inset-0 w-full h-full"
-                            src={`https://www.youtube.com/embed/${video.youtubeId}`}
+                            src={`https://www.youtube.com/embed/${video.youtube_id}`}
                             title={video.title}
                             frameBorder="0"
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -122,14 +122,14 @@ export default function Events() {
                       className="rounded-lg overflow-hidden bg-stone-900 border border-white/10 hover:border-white/20 transition-colors"
                     >
                       <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                        {video.videoUrl && (
+                        {video.url && (
                           <video
                             className="absolute inset-0 w-full h-full"
                             controls
                             preload="metadata"
                             style={{ background: '#1c1917' }}
                           >
-                            <source src={video.videoUrl} type="video/mp4" />
+                            <source src={video.url} type="video/mp4" />
                             Your browser does not support the video tag.
                           </video>
                         )}
