@@ -86,17 +86,31 @@ async function b2GetUploadUrl(auth, bucketId) {
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
+    bodyParser: false, // Disable default body parser to handle binary data
   },
 };
+
+// Helper to read raw body
+async function getRawBody(req) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', chunk => {
+      if (typeof chunk === 'string') {
+        data += chunk;
+      } else {
+        data = data ? Buffer.concat([Buffer.from(data), chunk]) : chunk;
+      }
+    });
+    req.on('end', () => resolve(data));
+    req.on('error', reject);
+  });
+}
 
 export default async function handler(req, res) {
   console.log('B2 Upload API called:', {
     method: req.method,
-    headers: req.headers,
-    bodySize: req.body ? (Buffer.isBuffer(req.body) ? req.body.length : req.body.length) : 0,
+    contentType: req.headers['content-type'],
+    fileName: req.headers['x-file-name'],
   });
 
   // Set CORS headers
@@ -134,17 +148,28 @@ export default async function handler(req, res) {
       // Keep as is if decode fails
     }
 
-    // Handle different body formats
-    if (Buffer.isBuffer(req.body)) {
-      fileBuffer = req.body;
-    } else if (req.body instanceof ArrayBuffer) {
-      fileBuffer = Buffer.from(req.body);
-    } else if (typeof req.body === 'string') {
-      fileBuffer = Buffer.from(req.body, 'utf-8');
-    } else if (req.body) {
-      fileBuffer = Buffer.from(JSON.stringify(req.body));
-    } else {
+    // Get raw body data from stream
+    const bodyData = await getRawBody(req);
+
+    if (!bodyData) {
+      console.error('No body data received');
       return res.status(400).json({ success: false, error: 'No file data received' });
+    }
+
+    // Handle different body formats
+    if (Buffer.isBuffer(bodyData)) {
+      fileBuffer = bodyData;
+    } else if (bodyData instanceof ArrayBuffer) {
+      fileBuffer = Buffer.from(bodyData);
+    } else if (typeof bodyData === 'string') {
+      fileBuffer = Buffer.from(bodyData, 'utf-8');
+    } else {
+      fileBuffer = Buffer.from(JSON.stringify(bodyData));
+    }
+
+    if (!fileBuffer || fileBuffer.length === 0) {
+      console.error('Empty file buffer');
+      return res.status(400).json({ success: false, error: 'Empty file data' });
     }
 
     console.log('Uploading to B2:', {
