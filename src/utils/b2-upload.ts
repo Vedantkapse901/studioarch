@@ -1,13 +1,8 @@
 /**
  * B2 Storage Upload Utility
  * - Production (Vercel): Calls /api/b2-upload backend endpoint
- * - Local dev: Simulates upload with mock URL (for testing)
+ * - Local dev: Uses dev-server.js proxy
  */
-
-import { toB2StorageRef, buildB2DisplayUrl } from '../lib/b2MediaUrls';
-
-const IS_DEV = import.meta.env.DEV;
-const IS_PRODUCTION = import.meta.env.PROD;
 
 export async function uploadToB2(
   file: File,
@@ -19,7 +14,7 @@ export async function uploadToB2(
 
     if (onProgress) onProgress(10);
 
-    // Always use real API endpoint (works in dev via dev-server.js + in prod via Vercel)
+    // Always use real API endpoint
     return await realB2Upload(file, fileName, onProgress);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -138,14 +133,8 @@ async function realB2Upload(
 
   console.log('✅ B2 upload successful:', data.url);
 
-  // Convert to b2ref format for storage
-  const storageRef = toB2StorageRef(fileName);
-  // Build display URL using proxy
-  const displayUrl = buildB2DisplayUrl(storageRef);
-
   return {
     success: true,
-    url: displayUrl, // Proxy URL for display
-    storageRef, // b2ref:// format for database storage
+    url: data.url, // Proxy URL - save directly to database
   };
 }
