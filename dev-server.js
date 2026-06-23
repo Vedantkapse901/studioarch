@@ -11,6 +11,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = 3001;
@@ -85,7 +86,10 @@ app.post('/api/b2-upload', async (req, res) => {
     const uploadUrlData = await uploadUrlResponse.json();
     console.log('✅ Got upload URL');
 
-    // Step 3: Upload file to B2
+    // Step 3: Calculate SHA1 (REQUIRED by B2!)
+    const sha1 = crypto.createHash('sha1').update(req.body).digest('hex');
+
+    // Step 4: Upload file to B2
     console.log('⬆️ Uploading to B2...');
     const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
       method: 'POST',
@@ -94,7 +98,7 @@ app.post('/api/b2-upload', async (req, res) => {
         'X-Bz-File-Name': encodeURIComponent(fileName),
         'X-Bz-Content-Type': contentType,
         'Content-Type': contentType,
-        'Content-Length': req.body.length.toString(),
+        'X-Bz-Content-Sha1': sha1,  // ← THIS WAS MISSING!
       },
       body: req.body,
     });
