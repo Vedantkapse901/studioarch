@@ -110,29 +110,29 @@ export function useGallery() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    async function fetch() {
-      try {
-        setLoading(true)
-        const { data: folders, error: err } = await supabase
-          .from('gallery_folders')
-          .select('*, gallery_items(*)')
-          .order('display_order', { ascending: true })
+  const refetch = async () => {
+    try {
+      setLoading(true)
+      const { data: folders, error: err } = await supabase
+        .from('gallery_folders')
+        .select('*, gallery_items(*)')
+        .order('display_order', { ascending: true })
 
-        if (err) throw err
-        setData(folders || [])
-      } catch (err) {
-        console.error('Error fetching gallery:', err)
-        setError(err.message)
-      } finally {
-        setLoading(false)
-      }
+      if (err) throw err
+      setData(folders || [])
+    } catch (err) {
+      console.error('Error fetching gallery:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    fetch()
+  useEffect(() => {
+    refetch()
   }, [])
 
-  return { data, loading, error }
+  return { data, loading, error, refetch }
 }
 
 /**

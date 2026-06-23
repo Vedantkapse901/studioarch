@@ -37,7 +37,7 @@ export default function Admin() {
   const { data: supabaseProjects, refetch: refetchProjects, loading: projectsLoading } = useProjects();
   const { data: supabaseJournalPosts, refetch: refetchJournalPosts, loading: journalLoading } = useJournalPosts();
   const { data: contactMessages, refetch: refetchMessages, loading: messagesLoading } = useContactMessages();
-  const { folders: galleryFolders, loading: galleryLoading } = useGallery();
+  const { data: galleryFolders, refetch: refetchGallery, loading: galleryLoading } = useGallery();
   const { data: videos, refetch: refetchVideos, loading: videosLoading } = useEventVideos();
   const { settings: contentSettings, loading: settingsLoading } = useContentSettings();
   const { insert: insertProject, update: updateProject, remove: deleteProject } = useSupabaseMutation();
@@ -379,21 +379,15 @@ export default function Admin() {
           if (dbResult.success) {
             console.log('✅ Database save successful, updating UI...');
 
-            // Optimistically add to UI immediately (store proxy URL like database does)
-            const newImage = {
-              id: Date.now(),
-              url: uploadResult.url, // Store proxy URL, works immediately
-              title: newImageTitle.trim(),
-              folderId: folderId
-            };
-            setGalleryImages(prev => [...prev, newImage]);
-
             setNewImageUrl('');
             setNewImageFile(null);
             setNewImageTitle('');
             setImageCompressing(false);
             setImageCompressProgress(0);
             showSuccessNotification(`Image uploaded! (${formatFileSize(compressedFile.size)})`);
+
+            // Refetch gallery data from database
+            await refetchGallery();
           } else {
             console.error('❌ Database save failed:', dbResult);
             setImageError(`Failed to save image info to database: ${dbResult.error || 'Unknown error'}`);
