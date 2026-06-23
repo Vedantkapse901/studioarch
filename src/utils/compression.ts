@@ -2,7 +2,7 @@
 const MAX_IMAGE_SIZE = 500 * 1024; // 500KB in bytes (HD images)
 const MAX_IMAGE_WIDTH = 1920; // 1080p HD width
 const MAX_IMAGE_HEIGHT = 1080; // 1080p HD height
-const COMPRESSION_QUALITY = 0.80; // 80% quality for better compression
+const COMPRESSION_QUALITY = 0.92; // 92% quality - high quality with compression
 const VIDEO_MAX_WIDTH = 1920; // 1080p HD video
 
 /**

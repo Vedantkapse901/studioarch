@@ -339,14 +339,18 @@ export default function Admin() {
       return;
     }
 
-    // File-based image - Upload original quality to B2
+    // File-based image - Compress with high quality (92%) to B2
     if (newImageFile) {
       try {
         setImageCompressing(true);
         setImageCompressProgress(0);
 
-        // Upload original quality (no compression)
-        const uploadResult = await uploadToB2(newImageFile, `images/${Date.now()}_${newImageFile.name}`, (progress) => {
+        const compressedFile = await compressImage(newImageFile, (progress) => {
+          setImageCompressProgress(progress);
+        });
+
+        // Upload compressed high-quality image to B2
+        const uploadResult = await uploadToB2(compressedFile, `images/${Date.now()}_${compressedFile.name}`, (progress) => {
           setImageCompressProgress(progress);
         });
 
@@ -380,7 +384,7 @@ export default function Admin() {
             setNewImageTitle('');
             setImageCompressing(false);
             setImageCompressProgress(0);
-            showSuccessNotification(`Image uploaded! Original quality (${formatFileSize(newImageFile.size)})`);
+            showSuccessNotification(`Image uploaded! High quality 92% (${formatFileSize(compressedFile.size)})`);
 
             // Refetch gallery data from database
             await refetchGallery();
