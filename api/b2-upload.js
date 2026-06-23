@@ -90,20 +90,13 @@ export const config = {
   },
 };
 
-// Helper to read raw body
+// Helper to read raw body (EYE10 approach)
 async function getRawBody(req) {
-  return new Promise((resolve, reject) => {
-    let data = '';
-    req.on('data', chunk => {
-      if (typeof chunk === 'string') {
-        data += chunk;
-      } else {
-        data = data ? Buffer.concat([Buffer.from(data), chunk]) : chunk;
-      }
-    });
-    req.on('end', () => resolve(data));
-    req.on('error', reject);
-  });
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
 }
 
 export default async function handler(req, res) {
@@ -200,7 +193,7 @@ export default async function handler(req, res) {
       });
       return res.status(uploadResponse.status).json({
         success: false,
-        error: `Upload to B2 failed: ${uploadResponse.statusText}`,
+        error: `Upload to B2 failed (${uploadResponse.status}): ${errorText || uploadResponse.statusText}`,
       });
     }
 
