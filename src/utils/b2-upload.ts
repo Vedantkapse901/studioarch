@@ -13,17 +13,11 @@ export async function uploadToB2(
   onProgress?: (progress: number) => void
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
-    console.log('Starting B2 upload:', { fileName, fileSize: file.size, type: file.type, isDev: IS_DEV });
+    console.log('Starting B2 upload:', { fileName, fileSize: file.size, type: file.type });
 
     if (onProgress) onProgress(10);
 
-    // For local development, use mock/simulated upload
-    if (IS_DEV) {
-      console.log('⚙️ DEV MODE: Simulating B2 upload');
-      return simulateB2Upload(fileName, onProgress);
-    }
-
-    // For production, use real API endpoint
+    // Always use real API endpoint (works in dev via dev-server.js + in prod via Vercel)
     return await realB2Upload(file, fileName, onProgress);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
