@@ -112,8 +112,9 @@ app.post('/api/b2-upload', async (req, res) => {
     }
 
     const uploadedFile = await uploadResponse.json();
-    // B2 returns fileName already properly encoded - use it directly
-    const publicUrl = `${authData.downloadUrl}/file/${bucketName}/${uploadedFile.fileName}`;
+    // Construct public URL using original fileName with proper encoding (like EYE10)
+    const encodedFileName = fileName.split('/').map(encodeURIComponent).join('/');
+    const publicUrl = `${authData.downloadUrl}/file/${encodeURIComponent(bucketName)}/${encodedFileName}`;
 
     console.log('✅ Upload successful!');
     console.log(`📁 B2 URL: ${publicUrl}`);

@@ -150,8 +150,9 @@ export default async function handler(req, res) {
       });
     }
 
-    // B2 returns fileName already properly encoded - use it directly
-    const publicUrl = `${auth.downloadUrl}/file/${bucketName}/${uploadData.fileName}`;
+    // Construct public URL using original fileName with proper encoding (like EYE10)
+    const encodedFileName = fileName.split('/').map(encodeURIComponent).join('/');
+    const publicUrl = `${auth.downloadUrl}/file/${encodeURIComponent(bucketName)}/${encodedFileName}`;
 
     console.log('✅ Upload successful:', publicUrl);
 
