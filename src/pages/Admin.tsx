@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { LogOut, Menu, X, Home, Settings, Edit2, Image, FileText, ArrowLeft, Youtube, Trash2, Plus, Mail, Check, Download, Zap } from 'lucide-react';
 import { compressImage, compressVideo, formatFileSize } from '../utils/compression';
 import { uploadToB2 } from '../utils/b2-upload';
-import { buildB2DisplayUrl } from '../lib/b2MediaUrls';
 import { useAdminAuth, useProjects, useSupabaseMutation, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useSupabaseData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
@@ -367,11 +366,11 @@ export default function Admin() {
             }
           }
 
-          // Save to database - use storageRef (b2ref://) format
+          // Save to database - save proxy URL directly (simpler!)
           const dbResult = await insertGalleryItem('gallery_items', {
             folder_id: folderId,
             title: newImageTitle.trim(),
-            image_url: uploadResult.storageRef, // Save b2ref:// format, not proxy URL
+            image_url: uploadResult.url, // Save proxy URL directly
             display_order: galleryImages.length
           });
 
@@ -380,10 +379,10 @@ export default function Admin() {
           if (dbResult.success) {
             console.log('✅ Database save successful, updating UI...');
 
-            // Optimistically add to UI immediately (store b2ref format like database does)
+            // Optimistically add to UI immediately (store proxy URL like database does)
             const newImage = {
               id: Date.now(),
-              url: uploadResult.storageRef, // Store b2ref format, consistent with database
+              url: uploadResult.url, // Store proxy URL, works immediately
               title: newImageTitle.trim(),
               folderId: folderId
             };
@@ -1273,7 +1272,7 @@ export default function Admin() {
                   ) : galleryImages.map(image => (
                     <motion.div key={image.id} whileHover={{ y: -5 }} className="bg-white/5 border border-white/10 rounded-lg overflow-hidden">
                       <div className="h-40 bg-stone-900 flex items-center justify-center overflow-hidden relative">
-                        <AdminImageDisplay src={buildB2DisplayUrl(image.url)} alt={image.title} className="w-full h-full object-cover" />
+                        <AdminImageDisplay src={image.url} alt={image.title} className="w-full h-full object-cover" />
                       </div>
                       <div className="p-4">
                         <p className="text-sm font-light mb-2 truncate">{image.title}</p>
