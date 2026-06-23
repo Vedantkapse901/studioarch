@@ -264,6 +264,26 @@ export default function Admin() {
 
   const handleRemoveVideo = (id: number) => { setEventVideos(prev => prev.filter(v => v.id !== id)); showSuccessNotification('Video removed.'); };
 
+  // Clean up broken gallery images (with %2F encoding issues)
+  const handleCleanupBrokenImages = async () => {
+    try {
+      const brokenImages = galleryImages.filter(img => img.url.includes('%2F') || img.url.includes('%20'));
+      if (brokenImages.length === 0) {
+        showSuccessNotification('No broken images found!');
+        return;
+      }
+
+      for (const img of brokenImages) {
+        await deleteGalleryItem('gallery_items', img.id);
+      }
+
+      setGalleryImages(prev => prev.filter(img => !img.url.includes('%2F') && !img.url.includes('%20')));
+      showSuccessNotification(`Removed ${brokenImages.length} broken image(s). Re-upload them fresh!`);
+    } catch (error) {
+      setImageError('Failed to cleanup images');
+    }
+  };
+
   const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -1234,6 +1254,16 @@ export default function Admin() {
                     </motion.button>
                   </div>
                 </form>
+
+                {/* Cleanup Button */}
+                <motion.button
+                  onClick={handleCleanupBrokenImages}
+                  whileHover={{ scale: 1.02 }}
+                  className="mb-8 px-4 py-2 bg-red-500/20 border border-red-500/40 rounded text-xs uppercase tracking-widest text-red-400 hover:bg-red-500/30 transition-colors"
+                >
+                  🧹 Cleanup Broken Images (with %2F encoding)
+                </motion.button>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {galleryImages.length === 0 ? (
                     <div className="col-span-full bg-white/5 border border-white/10 rounded-lg p-8 text-center text-stone-500">
