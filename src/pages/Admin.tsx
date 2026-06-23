@@ -8,7 +8,7 @@ import { useAdminAuth, useProjects, useSupabaseMutation, useJournalPosts, useCon
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
 
-type EventVideo = { id: number; youtubeId?: string; title: string; url?: string; videoUrl?: string; isYoutube: boolean; };
+type EventVideo = { id: number; youtube_id?: string; title: string; url?: string; isYoutube: boolean; };
 type JournalPost = { id: number; title: string; date: string; excerpt: string; category: string; };
 type Project = { id: number; name: string; location: string; year: string; category: string; description: string; locationmapurl?: string; images?: string[]; };
 type GalleryImage = { id: number; url: string; title: string; };
@@ -171,7 +171,8 @@ export default function Admin() {
 
         const result = await insertVideo('event_videos', {
           title: newVideoTitle.trim(),
-          video_url: newVideoUrl.trim(),
+          youtube_id: youtubeId,
+          url: newVideoUrl.trim(),
           category: 'YouTube',
           display_order: eventVideos.length
         });
@@ -212,7 +213,7 @@ export default function Admin() {
           // Save to database
           const dbResult = await insertVideo('event_videos', {
             title: newVideoTitle.trim(),
-            video_url: uploadResult.url,
+            url: uploadResult.url,
             category: 'Upload',
             display_order: eventVideos.length
           });
@@ -226,10 +227,11 @@ export default function Admin() {
             const newVideo = {
               id: Date.now(),
               title: newVideoTitle.trim(),
-              video_url: uploadResult.url,
+              url: uploadResult.url,
               category: 'Upload',
               display_order: eventVideos.length,
-              created_at: new Date().toISOString()
+              created_at: new Date().toISOString(),
+              isYoutube: false
             };
             setEventVideos(prev => [...prev, newVideo]);
 
@@ -1369,7 +1371,7 @@ export default function Admin() {
                           <div className="space-y-2">
                             {eventVideos.filter(v => v.isYoutube).map((video, idx) => (
                               <motion.div key={video.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="bg-white/5 border border-white/10 rounded-lg p-4 flex items-center gap-4">
-                                {video.youtubeId && <img src={`https://img.youtube.com/vi/${video.youtubeId}/mqdefault.jpg`} alt={video.title} className="w-28 h-16 object-cover rounded flex-shrink-0" />}
+                                {video.youtube_id && <img src={`https://img.youtube.com/vi/${video.youtube_id}/mqdefault.jpg`} alt={video.title} className="w-28 h-16 object-cover rounded flex-shrink-0" />}
                                 <div className="flex-1 min-w-0">
                                   <p className="font-light text-white truncate">{video.title}</p>
                                   <p className="text-xs text-yellow-600 mt-1">📺 YouTube</p>
