@@ -3,15 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
 import { Mail, Instagram, Linkedin, MapPin } from 'lucide-react';
 import { PROJECTS } from './Projects';
-import { useProjects } from '../hooks/useSupabaseData';
-
-const INITIAL_CAROUSEL_IMAGES = [
-  "/architecture-1.jpg",
-  "/architecture-2.jpg",
-  "/architecture-3.jpg",
-  "/architecture-4.jpg",
-  "/architecture-5.jpg",
-];
+import { useProjects, useGallery } from '../hooks/useSupabaseData';
 
 // Book-opening transition variants
 const transitionVariants = [
@@ -32,7 +24,11 @@ const transitionVariants = [
 export default function Home() {
   // Fetch projects from Supabase
   const { data: supabaseProjects, loading: projectsLoading } = useProjects();
+  // Fetch carousel images from gallery
+  const { data: galleryFolders } = useGallery();
+
   const [projects, setProjects] = useState(() => PROJECTS);
+  const [carouselImages, setCarouselImages] = useState<string[]>([]);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [autoCarouselIndex, setAutoCarouselIndex] = useState(0);
@@ -53,6 +49,19 @@ export default function Home() {
       setProjects(supabaseProjects as typeof PROJECTS);
     }
   }, [supabaseProjects]);
+
+  // Extract gallery images for carousel from database
+  useEffect(() => {
+    if (galleryFolders && Array.isArray(galleryFolders)) {
+      const images = galleryFolders.flatMap((folder: any) =>
+        (folder.gallery_items || []).map((item: any) => item.url)
+      );
+
+      if (images.length > 0) {
+        setCarouselImages(images);
+      }
+    }
+  }, [galleryFolders]);
 
   // Get unique categories
   const categories = Array.from(new Set(projects.map((p) => p.category)));
@@ -92,14 +101,14 @@ export default function Home() {
 
   // Auto carousel effect
   useEffect(() => {
-    if (!autoCarouselActive) return;
+    if (!autoCarouselActive || carouselImages.length === 0) return;
 
     const interval = setInterval(() => {
-      setAutoCarouselIndex((prev) => (prev + 1) % INITIAL_CAROUSEL_IMAGES.length);
+      setAutoCarouselIndex((prev) => (prev + 1) % carouselImages.length);
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [autoCarouselActive]);
+  }, [autoCarouselActive, carouselImages]);
 
   // Handle scroll - restart carousel if user scrolls back up
   useEffect(() => {
@@ -246,17 +255,20 @@ export default function Home() {
       {/* Auto-Carousel Section - Layered Onion Peeling Effect */}
       <section className="relative h-screen w-full overflow-hidden sticky top-0 bg-black z-10">
         {/* Background/Next Image Layer */}
+        {carouselImages.length > 0 && (
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{
-            backgroundImage: `url('${INITIAL_CAROUSEL_IMAGES[(autoCarouselIndex + 1) % INITIAL_CAROUSEL_IMAGES.length]}')`,
+            backgroundImage: `url('${carouselImages[(autoCarouselIndex + 1) % carouselImages.length]}')`,
             backgroundSize: 'cover',
             zIndex: 1,
           }}
         />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40" style={{ zIndex: 2 }} />
 
         {/* Top Layer - Peels Away */}
+        {carouselImages.length > 0 && (
         <AnimatePresence mode="wait">
           <motion.div
             key={autoCarouselIndex}
@@ -277,7 +289,7 @@ export default function Home() {
             <div
               className="w-full h-full bg-cover bg-center bg-no-repeat"
               style={{
-                backgroundImage: `url('${INITIAL_CAROUSEL_IMAGES[autoCarouselIndex]}')`,
+                backgroundImage: `url('${carouselImages[autoCarouselIndex]}')`,
                 backgroundSize: 'cover',
               }}
             />
@@ -296,6 +308,7 @@ export default function Home() {
             </motion.div>
           </motion.div>
         </AnimatePresence>
+        )}
       </section>
 
       {/* Projects Section */}
