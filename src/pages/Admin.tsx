@@ -261,7 +261,23 @@ export default function Admin() {
     }
   };
 
-  const handleRemoveVideo = (id: number) => { setEventVideos(prev => prev.filter(v => v.id !== id)); showSuccessNotification('Video removed.'); };
+  const handleRemoveVideo = async (id: number) => {
+    try {
+      // Delete from database
+      const result = await deleteVideo('event_videos', id);
+      if (result.success) {
+        // Remove from UI
+        setEventVideos(prev => prev.filter(v => v.id !== id));
+        showSuccessNotification('Video deleted!');
+        // Refetch to sync
+        await refetchVideos();
+      } else {
+        setVideoError('Failed to delete video');
+      }
+    } catch (error) {
+      setVideoError(error instanceof Error ? error.message : 'Failed to delete video');
+    }
+  };
 
   const handleVideoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
