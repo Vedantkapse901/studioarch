@@ -4,6 +4,8 @@
  * - Local dev: Simulates upload with mock URL (for testing)
  */
 
+import { toB2StorageRef, buildB2DisplayUrl } from '../lib/b2MediaUrls';
+
 const IS_DEV = import.meta.env.DEV;
 const IS_PRODUCTION = import.meta.env.PROD;
 
@@ -136,11 +138,14 @@ async function realB2Upload(
 
   console.log('✅ B2 upload successful:', data.url);
 
-  // Use proxy URL for viewing (handles private buckets)
-  const proxyUrl = `/api/b2-upload?key=${encodeURIComponent(fileName)}`;
+  // Convert to b2ref format for storage
+  const storageRef = toB2StorageRef(fileName);
+  // Build display URL using proxy
+  const displayUrl = buildB2DisplayUrl(storageRef);
 
   return {
     success: true,
-    url: proxyUrl,
+    url: displayUrl, // Proxy URL for display
+    storageRef, // b2ref:// format for database storage
   };
 }

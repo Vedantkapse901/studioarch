@@ -4,6 +4,7 @@ import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'fra
 import { Mail, Instagram, Linkedin, MapPin } from 'lucide-react';
 import { PROJECTS } from './Projects';
 import { useProjects, useGallery } from '../hooks/useSupabaseData';
+import { buildB2DisplayUrl } from '../lib/b2MediaUrls';
 
 // Book-opening transition variants
 const transitionVariants = [
@@ -54,7 +55,7 @@ export default function Home() {
   useEffect(() => {
     if (galleryFolders && Array.isArray(galleryFolders)) {
       const images = galleryFolders.flatMap((folder: any) =>
-        (folder.gallery_items || []).map((item: any) => item.url)
+        (folder.gallery_items || []).map((item: any) => buildB2DisplayUrl(item.url))
       );
 
       if (images.length > 0) {

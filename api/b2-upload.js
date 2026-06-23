@@ -94,11 +94,13 @@ export default async function handler(req, res) {
   // Handle GET/HEAD requests - download/proxy images from B2
   if (req.method === 'GET' || req.method === 'HEAD') {
     try {
-      const key = req.query.key;
-      if (!key) {
+      const keyParam = req.query.key;
+      if (!keyParam) {
         return res.status(400).json({ error: 'Missing key parameter' });
       }
 
+      // Decode the key parameter (it comes URL-encoded)
+      const key = decodeURIComponent(String(keyParam));
       console.log(`📥 Proxying download: ${key}`);
 
       const { bucketName, bucketId } = requireB2Config();
