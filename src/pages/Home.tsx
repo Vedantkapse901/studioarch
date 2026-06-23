@@ -55,7 +55,7 @@ export default function Home() {
   useEffect(() => {
     if (galleryFolders && Array.isArray(galleryFolders)) {
       const images = galleryFolders.flatMap((folder: any) =>
-        (folder.gallery_items || []).map((item: any) => buildB2DisplayUrl(item.url))
+        (folder.gallery_items || []).map((item: any) => buildB2DisplayUrl(item.image_url))
       );
 
       if (images.length > 0) {
