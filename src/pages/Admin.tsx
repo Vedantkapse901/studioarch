@@ -360,10 +360,10 @@ export default function Admin() {
           if (dbResult.success) {
             console.log('✅ Database save successful, updating UI...');
 
-            // Optimistically add to UI immediately (use proxy URL for display)
+            // Optimistically add to UI immediately (store b2ref format like database does)
             const newImage = {
               id: Date.now(),
-              url: uploadResult.url, // Proxy URL for immediate display
+              url: uploadResult.storageRef, // Store b2ref format, consistent with database
               title: newImageTitle.trim(),
               folderId: folderId
             };
