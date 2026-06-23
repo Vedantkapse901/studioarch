@@ -347,11 +347,11 @@ export default function Admin() {
             }
           }
 
-          // Save to database
+          // Save to database - use storageRef (b2ref://) format
           const dbResult = await insertGalleryItem('gallery_items', {
             folder_id: folderId,
             title: newImageTitle.trim(),
-            image_url: uploadResult.url,
+            image_url: uploadResult.storageRef, // Save b2ref:// format, not proxy URL
             display_order: galleryImages.length
           });
 
@@ -360,10 +360,10 @@ export default function Admin() {
           if (dbResult.success) {
             console.log('✅ Database save successful, updating UI...');
 
-            // Optimistically add to UI immediately
+            // Optimistically add to UI immediately (use proxy URL for display)
             const newImage = {
               id: Date.now(),
-              url: uploadResult.url,
+              url: uploadResult.url, // Proxy URL for immediate display
               title: newImageTitle.trim(),
               folderId: folderId
             };
