@@ -134,9 +134,9 @@ export default async function handler(req, res) {
       method: 'POST',
       headers: {
         Authorization: uploadInfo.authorizationToken,
-        'X-Bz-File-Name': encodeURIComponent(fileName),
+        'X-Bz-File-Name': fileName, // Don't URL-encode - B2 stores literal file names
         'Content-Type': contentType,
-        'X-Bz-Content-Sha1': sha1, // ← THIS WAS MISSING!
+        'X-Bz-Content-Sha1': sha1,
       },
       body,
     });
@@ -150,7 +150,9 @@ export default async function handler(req, res) {
       });
     }
 
-    const publicUrl = `${auth.downloadUrl}/file/${bucketName}/${fileName}`;
+    // Construct public URL - properly encode path segments
+    const encodedFileName = fileName.split('/').map(encodeURIComponent).join('/');
+    const publicUrl = `${auth.downloadUrl}/file/${bucketName}/${encodedFileName}`;
 
     console.log('✅ Upload successful:', publicUrl);
 

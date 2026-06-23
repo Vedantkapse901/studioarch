@@ -98,10 +98,10 @@ app.post('/api/b2-upload', async (req, res) => {
       method: 'POST',
       headers: {
         Authorization: uploadUrlData.authorizationToken,
-        'X-Bz-File-Name': encodeURIComponent(fileName),
+        'X-Bz-File-Name': fileName, // Don't URL-encode - B2 stores literal file names
         'X-Bz-Content-Type': contentType,
         'Content-Type': contentType,
-        'X-Bz-Content-Sha1': sha1,  // ← THIS WAS MISSING!
+        'X-Bz-Content-Sha1': sha1,
       },
       body: req.body,
     });
@@ -112,7 +112,9 @@ app.post('/api/b2-upload', async (req, res) => {
     }
 
     const uploadedFile = await uploadResponse.json();
-    const publicUrl = `${authData.downloadUrl}/file/${bucketName}/${uploadedFile.fileName}`;
+    // Construct public URL - properly encode path segments
+    const encodedFileName = uploadedFile.fileName.split('/').map(encodeURIComponent).join('/');
+    const publicUrl = `${authData.downloadUrl}/file/${bucketName}/${encodedFileName}`;
 
     console.log('✅ Upload successful!');
     console.log(`📁 B2 URL: ${publicUrl}`);
