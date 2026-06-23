@@ -527,7 +527,23 @@ export default function Admin() {
     }
   };
 
-  const handleRemoveImage = (id: number) => { setGalleryImages(prev => prev.filter(img => img.id !== id)); showSuccessNotification('Image removed.'); };
+  const handleRemoveImage = async (id: number) => {
+    try {
+      // Delete from database
+      const result = await deleteGalleryItem('gallery_items', id);
+      if (result.success) {
+        // Remove from UI
+        setGalleryImages(prev => prev.filter(img => img.id !== id));
+        showSuccessNotification('Image deleted!');
+        // Refetch to sync
+        await refetchGallery();
+      } else {
+        setImageError('Failed to delete image');
+      }
+    } catch (error) {
+      setImageError(error instanceof Error ? error.message : 'Failed to delete image');
+    }
+  };
 
   const handleAddProjectImage = () => {
     if (editingProjectImages.length >= 5) { showSuccessNotification('Maximum 5 images per project'); return; }
