@@ -24,8 +24,8 @@ const transitionVariants = [
 export default function Home() {
   // Fetch projects from Supabase
   const { data: supabaseProjects, loading: projectsLoading } = useProjects();
-  // Fetch carousel images from gallery
-  const { data: galleryFolders } = useGallery();
+  // Fetch carousel images from gallery with refetch
+  const { data: galleryFolders, refetch: refetchGallery } = useGallery();
 
   const [projects, setProjects] = useState(() => PROJECTS);
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
@@ -125,6 +125,19 @@ export default function Home() {
 
     return unsubscribe;
   }, [scrollY, hasScrolledPastCarousel]);
+
+  // Refetch gallery when page becomes visible (e.g., returning from admin)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('📸 Refetching gallery on page focus...');
+        refetchGallery();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [refetchGallery]);
 
   // Close menu when clicking outside
   useEffect(() => {
