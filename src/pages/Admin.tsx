@@ -339,18 +339,14 @@ export default function Admin() {
       return;
     }
 
-    // File-based image - Compress & Upload to Supabase Storage
+    // File-based image - Upload original quality to B2
     if (newImageFile) {
       try {
         setImageCompressing(true);
         setImageCompressProgress(0);
 
-        const compressedFile = await compressImage(newImageFile, (progress) => {
-          setImageCompressProgress(progress);
-        });
-
-        // Upload to B2
-        const uploadResult = await uploadToB2(compressedFile, `images/${Date.now()}_${newImageFile.name}`, (progress) => {
+        // Upload original quality (no compression)
+        const uploadResult = await uploadToB2(newImageFile, `images/${Date.now()}_${newImageFile.name}`, (progress) => {
           setImageCompressProgress(progress);
         });
 
@@ -384,7 +380,7 @@ export default function Admin() {
             setNewImageTitle('');
             setImageCompressing(false);
             setImageCompressProgress(0);
-            showSuccessNotification(`Image uploaded! (${formatFileSize(compressedFile.size)})`);
+            showSuccessNotification(`Image uploaded! Original quality (${formatFileSize(newImageFile.size)})`);
 
             // Refetch gallery data from database
             await refetchGallery();
