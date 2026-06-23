@@ -20,7 +20,7 @@ const app = express();
 const PORT = 3001;
 
 app.use(cors());
-app.use(express.raw({ type: '*/*', limit: '50mb' }));
+app.use(express.raw({ type: '*/*', limit: '100mb' })); // Increased for large original quality images
 
 // B2 Upload Endpoint
 app.post('/api/b2-upload', async (req, res) => {
