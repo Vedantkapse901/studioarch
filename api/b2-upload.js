@@ -208,15 +208,14 @@ export default async function handler(req, res) {
       });
     }
 
-    // Construct public URL using original fileName with proper encoding (like EYE10)
-    const encodedFileName = fileName.split('/').map(encodeURIComponent).join('/');
-    const publicUrl = `${auth.downloadUrl}/file/${encodeURIComponent(bucketName)}/${encodedFileName}`;
+    // Return proxy URL for database storage (not direct B2 URL)
+    const proxyUrl = `/api/b2-upload?key=${encodeURIComponent(fileName)}`;
 
-    console.log('✅ Upload successful:', publicUrl);
+    console.log('✅ Upload successful, proxy URL:', proxyUrl);
 
     return res.status(200).json({
       success: true,
-      url: publicUrl,
+      url: proxyUrl, // Proxy URL - save this to database
       fileName: uploadData.fileName,
       fileId: uploadData.fileId,
     });

@@ -112,16 +112,15 @@ app.post('/api/b2-upload', async (req, res) => {
     }
 
     const uploadedFile = await uploadResponse.json();
-    // Construct public URL using original fileName with proper encoding (like EYE10)
-    const encodedFileName = fileName.split('/').map(encodeURIComponent).join('/');
-    const publicUrl = `${authData.downloadUrl}/file/${encodeURIComponent(bucketName)}/${encodedFileName}`;
+    // Return proxy URL for database storage (not direct B2 URL)
+    const proxyUrl = `/api/b2-upload?key=${encodeURIComponent(fileName)}`;
 
     console.log('✅ Upload successful!');
-    console.log(`📁 B2 URL: ${publicUrl}`);
+    console.log(`📁 Proxy URL: ${proxyUrl}`);
 
     res.json({
       success: true,
-      url: publicUrl,
+      url: proxyUrl, // Proxy URL - save this to database
       fileName: uploadedFile.fileName,
       fileId: uploadedFile.fileId,
     });
