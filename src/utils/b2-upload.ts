@@ -136,8 +136,11 @@ async function realB2Upload(
 
   console.log('✅ B2 upload successful:', data.url);
 
+  // Use proxy URL for viewing (handles private buckets)
+  const proxyUrl = `/api/b2-upload?key=${encodeURIComponent(fileName)}`;
+
   return {
     success: true,
-    url: data.url,
+    url: proxyUrl,
   };
 }

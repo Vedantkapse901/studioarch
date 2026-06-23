@@ -83,12 +83,68 @@ async function readRawBody(req) {
 export default async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, HEAD');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-File-Name, Authorization');
 
   if (req.method === 'OPTIONS') {
     res.status(204).end();
     return;
+  }
+
+  // Handle GET/HEAD requests - download/proxy images from B2
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    try {
+      const key = req.query.key;
+      if (!key) {
+        return res.status(400).json({ error: 'Missing key parameter' });
+      }
+
+      console.log(`📥 Proxying download: ${key}`);
+
+      const { bucketName, bucketId } = requireB2Config();
+      const auth = await b2AuthorizeAccount();
+
+      // Get download authorization
+      const authToken = await b2ApiPost(auth.apiUrl, 'b2_get_download_authorization', auth.authorizationToken, {
+        bucketId,
+        fileNamePrefix: key,
+        validDurationInSeconds: 3600,
+      });
+
+      // Proxy the download request
+      const encodedKey = key.split('/').map(encodeURIComponent).join('/');
+      const downloadUrl = `${auth.downloadUrl}/file/${encodeURIComponent(bucketName)}/${encodedKey}`;
+
+      const response = await fetch(downloadUrl, {
+        method: req.method,
+        headers: {
+          Authorization: authToken.authorizationToken,
+        },
+      });
+
+      if (!response.ok) {
+        console.error(`❌ B2 download failed: ${response.status}`);
+        return res.status(response.status).send('Download failed');
+      }
+
+      // Copy headers
+      const contentType = response.headers.get('content-type');
+      if (contentType) res.setHeader('Content-Type', contentType);
+      const contentLength = response.headers.get('content-length');
+      if (contentLength) res.setHeader('Content-Length', contentLength);
+
+      if (req.method === 'HEAD') {
+        res.status(200).end();
+        return;
+      }
+
+      // Stream the file
+      const buffer = await response.arrayBuffer();
+      return res.status(200).send(Buffer.from(buffer));
+    } catch (error) {
+      console.error('❌ Download error:', error.message);
+      return res.status(500).json({ error: error.message || 'Download failed' });
+    }
   }
 
   if (req.method !== 'POST') {
