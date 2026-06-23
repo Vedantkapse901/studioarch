@@ -135,6 +135,94 @@ app.post('/api/b2-upload', async (req, res) => {
   }
 });
 
+// B2 Download/Proxy Endpoint (GET)
+app.get('/api/b2-upload', async (req, res) => {
+  try {
+    const keyParam = req.query.key;
+    if (!keyParam) {
+      return res.status(400).json({ error: 'Missing key parameter' });
+    }
+
+    // Decode the key parameter
+    const key = decodeURIComponent(String(keyParam));
+    console.log(`📥 Proxying download: ${key}`);
+
+    const keyId = process.env.VITE_B2_KEY_ID;
+    const applicationKey = process.env.VITE_B2_APPLICATION_KEY;
+    const bucketName = process.env.VITE_B2_BUCKET_NAME;
+    const bucketId = process.env.VITE_B2_BUCKET_ID;
+
+    if (!keyId || !applicationKey || !bucketName || !bucketId) {
+      return res.status(500).json({ error: 'B2 credentials not configured' });
+    }
+
+    // Step 1: Authorize with B2
+    const basic = Buffer.from(`${keyId}:${applicationKey}`).toString('base64');
+    const authResponse = await fetch('https://api.backblazeb2.com/b2api/v2/b2_authorize_account', {
+      method: 'GET',
+      headers: { Authorization: `Basic ${basic}` },
+    });
+
+    if (!authResponse.ok) {
+      throw new Error(`B2 auth failed: ${authResponse.status}`);
+    }
+
+    const authData = await authResponse.json();
+
+    // Step 2: Get download authorization
+    const authTokenResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_download_authorization`, {
+      method: 'POST',
+      headers: {
+        Authorization: authData.authorizationToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        bucketId,
+        fileNamePrefix: key,
+        validDurationInSeconds: 3600,
+      }),
+    });
+
+    if (!authTokenResponse.ok) {
+      throw new Error(`Get auth token failed: ${authTokenResponse.status}`);
+    }
+
+    const authToken = await authTokenResponse.json();
+
+    // Step 3: Build download URL and fetch from B2
+    const encodedKey = key.split('/').map(encodeURIComponent).join('/');
+    const downloadUrl = `${authData.downloadUrl}/file/${encodeURIComponent(bucketName)}/${encodedKey}`;
+
+    console.log(`⬆️ Fetching from B2: ${downloadUrl}`);
+
+    const downloadResponse = await fetch(downloadUrl, {
+      method: 'GET',
+      headers: { Authorization: authToken.authorizationToken },
+    });
+
+    if (!downloadResponse.ok) {
+      console.error(`❌ B2 download failed: ${downloadResponse.status}`);
+      return res.status(downloadResponse.status).send('Download failed');
+    }
+
+    // Step 4: Proxy the response back to client
+    const contentType = downloadResponse.headers.get('content-type');
+    if (contentType) res.setHeader('Content-Type', contentType);
+
+    const contentLength = downloadResponse.headers.get('content-length');
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+
+    const buffer = await downloadResponse.arrayBuffer();
+    console.log(`✅ Downloaded ${buffer.byteLength} bytes`);
+
+    return res.status(200).send(Buffer.from(buffer));
+
+  } catch (error) {
+    console.error('❌ Download error:', error.message);
+    return res.status(500).json({ error: error.message || 'Download failed' });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'B2 Upload Server Running' });
