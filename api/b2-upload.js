@@ -150,9 +150,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // Construct public URL - properly encode path segments
-    const encodedFileName = fileName.split('/').map(encodeURIComponent).join('/');
-    const publicUrl = `${auth.downloadUrl}/file/${bucketName}/${encodedFileName}`;
+    // B2 returns fileName already properly encoded - use it directly
+    const publicUrl = `${auth.downloadUrl}/file/${bucketName}/${uploadData.fileName}`;
 
     console.log('✅ Upload successful:', publicUrl);
 

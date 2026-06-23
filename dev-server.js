@@ -112,9 +112,8 @@ app.post('/api/b2-upload', async (req, res) => {
     }
 
     const uploadedFile = await uploadResponse.json();
-    // Construct public URL - properly encode path segments
-    const encodedFileName = uploadedFile.fileName.split('/').map(encodeURIComponent).join('/');
-    const publicUrl = `${authData.downloadUrl}/file/${bucketName}/${encodedFileName}`;
+    // B2 returns fileName already properly encoded - use it directly
+    const publicUrl = `${authData.downloadUrl}/file/${bucketName}/${uploadedFile.fileName}`;
 
     console.log('✅ Upload successful!');
     console.log(`📁 B2 URL: ${publicUrl}`);
