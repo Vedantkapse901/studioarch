@@ -62,9 +62,10 @@ export default function NavMenu() {
               src="/logo-color.png"
               alt="1StudioArch"
               className="absolute inset-0 w-full h-full object-contain"
-              animate={{ opacity: 0 }}
-              whileHover={{ opacity: 1 }}
+              animate={{ opacity: 0, filter: 'brightness(1)' }}
+              whileHover={{ opacity: 1, filter: 'brightness(2)' }}
               transition={{ duration: 0.3 }}
+              style={{ filter: 'brightness(1)' }}
             />
           </div>
         </motion.div>

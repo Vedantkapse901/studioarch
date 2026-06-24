@@ -266,14 +266,16 @@ export default function Home() {
       </AnimatePresence>
 
       {/* Auto-Carousel Section - Layered Onion Peeling Effect */}
-      <section className="relative h-screen w-full overflow-hidden sticky top-0 bg-black z-10">
+      <section className="relative h-[150vh] w-full overflow-hidden sticky top-0 bg-black z-10">
         {/* Background/Next Image Layer */}
         {carouselImages.length > 0 && (
         <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          className="absolute inset-0"
           style={{
             backgroundImage: `url('${carouselImages[(autoCarouselIndex + 1) % carouselImages.length]}')`,
             backgroundSize: 'cover',
+            backgroundPosition: 'center center',
+            backgroundRepeat: 'no-repeat',
             zIndex: 1,
           }}
         />
@@ -300,10 +302,12 @@ export default function Home() {
             }}
           >
             <div
-              className="w-full h-full bg-cover bg-center bg-no-repeat"
+              className="w-full h-full"
               style={{
                 backgroundImage: `url('${carouselImages[autoCarouselIndex]}')`,
                 backgroundSize: 'cover',
+                backgroundPosition: 'center center',
+                backgroundRepeat: 'no-repeat',
               }}
             />
 
