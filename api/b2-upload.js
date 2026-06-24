@@ -188,11 +188,13 @@ export default async function handler(req, res) {
 
     // Upload to B2
     console.log('⬆️ Uploading to B2...');
+    // Sanitize filename - replace spaces with underscores for B2 compatibility
+    const sanitizedFileName = fileName.replace(/\s+/g, '_');
     const uploadRes = await fetch(uploadInfo.uploadUrl, {
       method: 'POST',
       headers: {
         Authorization: uploadInfo.authorizationToken,
-        'X-Bz-File-Name': fileName, // Don't URL-encode - B2 stores literal file names
+        'X-Bz-File-Name': sanitizedFileName, // Use sanitized filename (spaces→underscores)
         'Content-Type': contentType,
         'X-Bz-Content-Sha1': sha1,
       },
@@ -209,7 +211,8 @@ export default async function handler(req, res) {
     }
 
     // Return proxy URL for database storage (not direct B2 URL)
-    const proxyUrl = `/api/b2-upload?key=${encodeURIComponent(fileName)}`;
+    // Use sanitized filename that was actually uploaded to B2
+    const proxyUrl = `/api/b2-upload?key=${encodeURIComponent(sanitizedFileName)}`;
 
     console.log('✅ Upload successful, proxy URL:', proxyUrl);
 

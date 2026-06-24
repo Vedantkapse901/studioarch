@@ -10,12 +10,15 @@ export async function uploadToB2(
   onProgress?: (progress: number) => void
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
-    console.log('Starting B2 upload:', { fileName, fileSize: file.size, type: file.type });
+    // Sanitize filename - replace spaces and special chars with underscores
+    const sanitizedFileName = fileName.replace(/\s+/g, '_');
+
+    console.log('Starting B2 upload:', { originalName: fileName, sanitizedName: sanitizedFileName, fileSize: file.size, type: file.type });
 
     if (onProgress) onProgress(10);
 
     // Always use real API endpoint
-    return await realB2Upload(file, fileName, onProgress);
+    return await realB2Upload(file, sanitizedFileName, onProgress);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('B2 upload error:', errorMessage, error);
@@ -83,7 +86,7 @@ async function realB2Upload(
   const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
-      'X-File-Name': encodeURIComponent(fileName),
+      'X-File-Name': fileName, // Send plain filename - server will encode for proxy URL
       'Content-Type': file.type || 'application/octet-stream',
     },
     body: file,

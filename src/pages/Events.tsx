@@ -113,33 +113,40 @@ export default function Events() {
               <div>
                 <h2 className="text-3xl font-light mb-8">Videos</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {videos.filter(v => !v.isYoutube).map((video, idx) => (
-                    <motion.div
-                      key={video.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1, duration: 0.6 }}
-                      className="rounded-lg overflow-hidden bg-stone-900 border border-white/10 hover:border-white/20 transition-colors"
-                    >
-                      <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                        {video.url && (
-                          <video
-                            className="absolute inset-0 w-full h-full"
-                            controls
-                            preload="metadata"
-                            style={{ background: '#1c1917' }}
-                          >
-                            <source src={video.url} type="video/mp4" />
-                            Your browser does not support the video tag.
-                          </video>
-                        )}
-                      </div>
-                      <div className="px-4 py-3">
-                        <p className="text-sm font-light tracking-wide text-stone-300">{video.title}</p>
-                        <p className="text-xs text-blue-600 mt-1 uppercase tracking-widest">🎬 Video</p>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {videos.filter(v => !v.isYoutube).map((video, idx) => {
+                    // Convert relative proxy URL to absolute URL if needed
+                    const videoUrl = video.url?.startsWith('http')
+                      ? video.url
+                      : `${window.location.origin}${video.url}`;
+
+                    return (
+                      <motion.div
+                        key={video.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.1, duration: 0.6 }}
+                        className="rounded-lg overflow-hidden bg-stone-900 border border-white/10 hover:border-white/20 transition-colors"
+                      >
+                        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                          {video.url && (
+                            <video
+                              className="absolute inset-0 w-full h-full"
+                              controls
+                              preload="metadata"
+                              style={{ background: '#1c1917' }}
+                            >
+                              <source src={videoUrl} type="video/mp4" />
+                              Your browser does not support the video tag.
+                            </video>
+                          )}
+                        </div>
+                        <div className="px-4 py-3">
+                          <p className="text-sm font-light tracking-wide text-stone-300">{video.title}</p>
+                          <p className="text-xs text-blue-600 mt-1 uppercase tracking-widest">🎬 Video</p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               </div>
             )}
