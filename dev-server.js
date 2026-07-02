@@ -139,6 +139,17 @@ app.post('/api/b2-upload', async (req, res) => {
 
 // B2 Download/Proxy Endpoint (GET)
 app.get('/api/b2-upload', async (req, res) => {
+  // CORS headers for video playback
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS, HEAD');
+  res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type');
+  res.setHeader('Accept-Ranges', 'bytes');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
   try {
     const keyParam = req.query.key;
     if (!keyParam) {

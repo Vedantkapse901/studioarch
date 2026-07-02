@@ -11,6 +11,13 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
         rewrite: (path) => path,
+        bypass: (req, res, options) => {
+          // If dev-server not running, allow Vite to continue (404)
+          // This enables graceful fallback
+          if (req.headers.accept?.includes('application/json')) {
+            return null;
+          }
+        },
       },
     },
   },

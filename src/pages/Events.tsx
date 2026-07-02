@@ -74,11 +74,11 @@ export default function Events() {
         ) : (
           <div className="space-y-16">
             {/* YouTube Videos Section */}
-            {videos.filter(v => v.isYoutube).length > 0 && (
+            {videos.filter(v => v.type === 'youtube').length > 0 && (
               <div>
                 <h2 className="text-3xl font-light mb-8">YouTube Videos</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {videos.filter(v => v.isYoutube).map((video, idx) => (
+                  {videos.filter(v => v.type === 'youtube').map((video, idx) => (
                     <motion.div
                       key={video.id}
                       initial={{ opacity: 0, y: 20 }}
@@ -109,15 +109,19 @@ export default function Events() {
             )}
 
             {/* Uploaded Videos Section */}
-            {videos.filter(v => !v.isYoutube).length > 0 && (
+            {videos.filter(v => v.type === 'upload').length > 0 && (
               <div>
                 <h2 className="text-3xl font-light mb-8">Videos</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {videos.filter(v => !v.isYoutube).map((video, idx) => {
+                  {videos.filter(v => v.type === 'upload').map((video, idx) => {
                     // Convert relative proxy URL to absolute URL if needed
                     const videoUrl = video.url?.startsWith('http')
                       ? video.url
                       : `${window.location.origin}${video.url}`;
+
+                    console.log(`🎬 Video ${idx}: "${video.title}"`);
+                    console.log(`   Database URL: ${video.url}`);
+                    console.log(`   Final URL: ${videoUrl}`);
 
                     return (
                       <motion.div
@@ -132,8 +136,15 @@ export default function Events() {
                             <video
                               className="absolute inset-0 w-full h-full"
                               controls
+                              controlsList="nodownload"
                               preload="metadata"
                               style={{ background: '#1c1917' }}
+                              onError={(e) => {
+                                console.error(`❌ Video error for "${video.title}":`, e);
+                                console.error(`   URL: ${videoUrl}`);
+                              }}
+                              onLoadStart={() => console.log(`⬇️ Loading: ${video.title}`)}
+                              onCanPlay={() => console.log(`✅ Can play: ${video.title}`)}
                             >
                               <source src={videoUrl} type="video/mp4" />
                               Your browser does not support the video tag.

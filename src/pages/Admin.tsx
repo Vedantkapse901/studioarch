@@ -7,6 +7,7 @@ import { uploadToB2 } from '../utils/b2-upload';
 import { useAdminAuth, useProjects, useSupabaseMutation, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useSupabaseData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
 import { AdminImageDisplay } from '../components/AdminImageDisplay';
+import { AdminDashboardSection } from '../components/AdminDashboard';
 
 type EventVideo = { id: number; youtube_id?: string; title: string; url?: string; isYoutube: boolean; };
 type JournalPost = { id: number; title: string; date: string; excerpt: string; category: string; };
@@ -173,6 +174,7 @@ export default function Admin() {
           title: newVideoTitle.trim(),
           youtube_id: youtubeId,
           url: newVideoUrl.trim(),
+          type: 'youtube',
           category: 'YouTube',
           display_order: eventVideos.length
         });
@@ -192,18 +194,15 @@ export default function Admin() {
       return;
     }
 
-    // Video File Upload - Compress & Upload to Supabase Storage
+    // Video File Upload - Upload as-is (don't compress videos)
     if (newVideoFile) {
       try {
         setVideoCompressing(true);
         setVideoCompressProgress(0);
 
-        const compressedFile = await compressVideo(newVideoFile, (progress) => {
-          setVideoCompressProgress(progress);
-        });
-
-        // Upload to B2
-        const uploadResult = await uploadToB2(compressedFile, `videos/${Date.now()}_${newVideoFile.name}`, (progress) => {
+        // Upload video file directly without compression
+        // Videos should be uploaded as original file, not compressed to image
+        const uploadResult = await uploadToB2(newVideoFile, `videos/${Date.now()}_${newVideoFile.name}`, (progress) => {
           setVideoCompressProgress(progress);
         });
 
@@ -214,6 +213,7 @@ export default function Admin() {
           const dbResult = await insertVideo('event_videos', {
             title: newVideoTitle.trim(),
             url: uploadResult.url,
+            type: 'upload',
             category: 'Upload',
             display_order: eventVideos.length
           });
@@ -245,7 +245,7 @@ export default function Admin() {
             setNewVideoTitle('');
             setVideoCompressing(false);
             setVideoCompressProgress(0);
-            showSuccessNotification(`Video uploaded! (${formatFileSize(compressedFile.size)})`);
+            showSuccessNotification(`Video uploaded! (${formatFileSize(newVideoFile.size)})`);
           } else {
             console.error('❌ Database save failed:', dbResult);
             setVideoError(`Failed to save video info to database: ${dbResult.error || 'Unknown error'}`);
@@ -630,25 +630,114 @@ export default function Admin() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center px-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="w-full max-w-md">
-          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-lg p-12">
-            <Link to="/"><h1 className="text-3xl font-light tracking-widest uppercase mb-12 text-center hover:opacity-60 transition-opacity">1StudioArch</h1></Link>
-            <h2 className="text-2xl font-light mb-8 text-center">Admin Portal</h2>
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div>
-                <label className="text-sm uppercase tracking-widest text-stone-400 block mb-3">Email</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@studioarch.com" className="w-full bg-white/10 border border-white/20 rounded px-4 py-3 text-white placeholder-stone-500 focus:outline-none focus:border-white/40 transition-colors" />
-              </div>
-              <div>
-                <label className="text-sm uppercase tracking-widest text-stone-400 block mb-3">Password</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Enter admin password" className="w-full bg-white/10 border border-white/20 rounded px-4 py-3 text-white placeholder-stone-500 focus:outline-none focus:border-white/40 transition-colors" />
-                {passwordError && <p className="text-red-400 text-sm mt-2">{passwordError}</p>}
-              </div>
-              <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="w-full bg-white text-black py-3 rounded font-light uppercase tracking-widest hover:bg-stone-200 transition-colors">Login</motion.button>
+      <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 relative overflow-hidden">
+        {/* Animated background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-white/5 opacity-50"></div>
+
+        {/* Top Right Logo */}
+        <Link to="/">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="fixed top-4 md:top-6 right-4 md:right-8 z-40 hover:opacity-80 transition-opacity"
+          >
+            <div className="relative w-40 h-12 md:w-48 md:h-16">
+              <motion.img
+                src="/logo-bw.png"
+                alt="1StudioArch"
+                className="absolute inset-0 w-full h-full object-contain"
+                animate={{ opacity: 1 }}
+                whileHover={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              />
+              <motion.img
+                src="/logo-color.png"
+                alt="1StudioArch"
+                className="absolute inset-0 w-full h-full object-contain"
+                animate={{ opacity: 0 }}
+                whileHover={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+          </motion.div>
+        </Link>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="w-full max-w-md relative z-10"
+        >
+          {/* Top accent line */}
+          <div className="h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent mb-8"></div>
+
+          {/* Login Card */}
+          <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl border border-white/15 rounded-2xl p-10 shadow-2xl">
+
+            {/* Divider */}
+            <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent mb-8"></div>
+
+            {/* Login Heading */}
+            <div className="mb-8">
+              <h2 className="text-lg font-light tracking-widest uppercase text-center mb-2">Admin Access</h2>
+              <p className="text-xs text-stone-400 text-center">Secure Management Portal</p>
+            </div>
+
+            {/* Login Form */}
+            <form onSubmit={handleLogin} className="space-y-5">
+              {/* Email Input */}
+              <motion.div whileHover={{ scale: 1.01 }} className="group">
+                <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2.5 group-hover:text-stone-300 transition-colors">Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="admin@studioarch.com"
+                  className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-stone-500 focus:outline-none focus:bg-white/10 focus:border-white/40 focus:ring-1 focus:ring-white/20 transition-all"
+                />
+              </motion.div>
+
+              {/* Password Input */}
+              <motion.div whileHover={{ scale: 1.01 }} className="group">
+                <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2.5 group-hover:text-stone-300 transition-colors">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••••"
+                  className="w-full bg-white/5 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-stone-500 focus:outline-none focus:bg-white/10 focus:border-white/40 focus:ring-1 focus:ring-white/20 transition-all"
+                />
+                {passwordError && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-red-400/90 text-xs mt-2 flex items-center gap-2"
+                  >
+                    <span>⚠</span> {passwordError}
+                  </motion.p>
+                )}
+              </motion.div>
+
+              {/* Submit Button */}
+              <motion.button
+                whileHover={{ scale: 1.02, boxShadow: "0 20px 50px rgba(255,255,255,0.15)" }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                className="w-full bg-white text-black py-3 rounded-lg font-light uppercase tracking-widest text-sm hover:bg-stone-100 transition-all duration-300 shadow-lg mt-6"
+              >
+                Access Portal
+              </motion.button>
             </form>
-            <p className="text-xs text-stone-500 mt-8 text-center">Powered by Supabase</p>
+
+            {/* Footer */}
+            <div className="mt-8 pt-6 border-t border-white/10">
+              <p className="text-xs text-stone-500 text-center">© 2026 1StudioArch. All rights reserved.</p>
+            </div>
           </div>
+
+          {/* Bottom accent line */}
+          <div className="h-1 bg-gradient-to-r from-transparent via-white/50 to-transparent mt-8"></div>
         </motion.div>
       </div>
     );
@@ -723,25 +812,14 @@ export default function Admin() {
 
             {/* Dashboard */}
             {activeSection === 'dashboard' && (
-              <div>
-                <h2 className="text-4xl font-light mb-12">Dashboard</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                  {[{ label: 'Total Projects', value: supabaseProjects.length }, { label: 'Journal Posts', value: journalPosts.length }, { label: 'Event Videos', value: eventVideos.length }, { label: 'Pages', value: 5 }].map(({ label, value }) => (
-                    <motion.div key={label} whileHover={{ y: -5 }} className="bg-white/5 border border-white/10 rounded-lg p-6">
-                      <p className="text-stone-400 text-sm uppercase tracking-widest mb-2">{label}</p>
-                      <p className="text-4xl font-light">{value}</p>
-                    </motion.div>
-                  ))}
-                </div>
-                <div className="bg-white/5 border border-white/10 rounded-lg p-8">
-                  <h3 className="text-2xl font-light mb-6">Quick Actions</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[{ label: 'Manage Projects', id: 'projects' }, { label: 'Manage Journal', id: 'journal' }, { label: 'Edit Contact', id: 'contact' }, { label: 'Events Videos', id: 'events' }].map(({ label, id }) => (
-                      <motion.button key={id} whileHover={{ scale: 1.02 }} onClick={() => setActiveSection(id)} className="bg-white/10 border border-white/20 py-3 rounded font-light uppercase tracking-widest hover:bg-white/20 transition-colors">{label}</motion.button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <AdminDashboardSection
+                stats={{
+                  totalProjects: supabaseProjects.length,
+                  journalPosts: journalPosts.length,
+                  eventVideos: eventVideos.length,
+                  galleryImages: galleryFolders.reduce((sum, folder) => sum + (folder.gallery_items?.length || 0), 0),
+                }}
+              />
             )}
 
             {/* Projects */}
