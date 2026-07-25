@@ -99,9 +99,9 @@ export const compressImage = async (file: File, onProgress?: (progress: number) 
 };
 
 /**
- * Compress video file to under 100KB
+ * Keep video file as-is (no actual compression applied)
  * Supports all video formats: MP4, WebM, MOV, MKV, AVI, etc.
- * Note: This extracts and compresses a key frame from the video
+ * Returns the video file unchanged to preserve quality
  */
 export const compressVideo = async (
   file: File,
@@ -114,24 +114,16 @@ export const compressVideo = async (
 
     onProgress?.(10);
 
-    // For video compression, we'll create a simplified version
-    // Extract first frame and compress it as a fallback
-    const videoBlob = await extractAndCompressVideoFrame(file);
-
-    onProgress?.(90);
-
-    const compressedName = `${file.name.split('.')[0]}_compressed.webm`;
-    const finalFile = new File([videoBlob], compressedName, {
-      type: 'video/webm',
-      lastModified: Date.now(),
-    });
-
+    // For videos, return as-is to preserve quality
+    // Video compression requires FFmpeg which isn't available in browser
+    // Keeping original video maintains quality
+    onProgress?.(50);
     onProgress?.(100);
 
-    return finalFile;
+    return file;
   } catch (error) {
-    console.error('Video compression error:', error);
-    throw new Error(`Failed to compress video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error('Video processing error:', error);
+    throw new Error(`Failed to process video: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

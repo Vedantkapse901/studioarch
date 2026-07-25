@@ -68,10 +68,22 @@ export default function Home() {
   // Get unique categories
   const categories = Array.from(new Set(projects.map((p) => p.category)));
 
-  // Filter projects based on selected category
-  const filteredProjects = selectedCategory
-    ? projects.filter((p) => p.category === selectedCategory)
-    : projects;
+  // Filter projects - show only 1 per category
+  const filteredProjects = (() => {
+    const filtered = selectedCategory
+      ? projects.filter((p) => p.category === selectedCategory)
+      : projects;
+
+    // Keep only 1 project per category
+    const categoryMap = new Map();
+    filtered.forEach((project) => {
+      if (!categoryMap.has(project.category)) {
+        categoryMap.set(project.category, project);
+      }
+    });
+
+    return Array.from(categoryMap.values());
+  })();
 
   // Handle project hover
   const handleProjectHoverStart = (projectId: number) => {
@@ -100,6 +112,15 @@ export default function Home() {
   const getCurrentVariant = (index: number) => {
     return transitionVariants[index % transitionVariants.length];
   };
+
+  // Preload next carousel image for smooth transitions
+  useEffect(() => {
+    if (carouselImages.length === 0) return;
+
+    const nextIndex = (autoCarouselIndex + 1) % carouselImages.length;
+    const nextImage = new Image();
+    nextImage.src = carouselImages[nextIndex];
+  }, [autoCarouselIndex, carouselImages]);
 
   // Auto carousel effect
   useEffect(() => {
@@ -403,14 +424,15 @@ export default function Home() {
                 onTouchStart={() => handleProjectHoverStart(project.id)}
                 onTouchEnd={() => handleProjectHoverEnd(project.id)}
               >
-                <Link to="/projects" className="block w-full h-full relative">
+                <Link to="/projects" state={{ selectedCategory: project.category }} className="block w-full h-full relative">
                   <div className="w-full h-full relative bg-black">
                     {/* Image with opacity control */}
-                    <div className="w-full h-full overflow-hidden">
+                    <div className="w-full h-full overflow-hidden bg-stone-900">
                       <motion.img
                         src={project.images[0]}
                         alt={project.name}
                         className="w-full h-full object-cover"
+                        loading="lazy"
                         animate={{
                           opacity: hoveredProjectId === project.id ? 1 : 0.2,
                           scale: hoveredProjectId === project.id ? 1.08 : 1,

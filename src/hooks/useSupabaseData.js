@@ -454,5 +454,27 @@ export function useAdminAuth() {
     }
   }
 
-  return { loginWithSupabase, logout, getSession, loading, error }
+  async function restoreSession() {
+    try {
+      const session = await getSession()
+      if (session && session.user) {
+        console.log('✅ Session restored for:', session.user.email)
+        return {
+          success: true,
+          user: {
+            id: session.user.id,
+            email: session.user.email,
+            role: 'admin'
+          },
+          session
+        }
+      }
+      return { success: false, user: null, session: null }
+    } catch (err) {
+      console.error('❌ Restore session error:', err)
+      return { success: false, user: null, session: null }
+    }
+  }
+
+  return { loginWithSupabase, logout, getSession, restoreSession, loading, error }
 }

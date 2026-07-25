@@ -5,13 +5,14 @@ interface AdminImageDisplayProps {
   src: string;
   alt: string;
   className?: string;
+  loading?: 'lazy' | 'eager';
 }
 
 /**
  * Display image with error handling and fallback
  * Shows placeholder if image fails to load
  */
-export function AdminImageDisplay({ src, alt, className = 'w-full h-full object-cover' }: AdminImageDisplayProps) {
+export function AdminImageDisplay({ src, alt, className = 'w-full h-full object-cover', loading = 'eager' }: AdminImageDisplayProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
@@ -44,6 +45,7 @@ export function AdminImageDisplay({ src, alt, className = 'w-full h-full object-
         src={src}
         alt={alt}
         className={className}
+        loading={loading}
         onLoad={() => setIsLoading(false)}
         onError={() => {
           console.error('Image failed to load:', src);

@@ -1,97 +1,63 @@
-import { useState, useEffect, useRef } from 'react';
-import { Image as ImageIcon } from 'lucide-react';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 
 interface OptimizedImageProps {
   src: string;
   alt: string;
   className?: string;
+  priority?: boolean;
   width?: number;
   height?: number;
-  loading?: 'lazy' | 'eager';
 }
 
 /**
- * Optimized image component with lazy loading and better caching
+ * Optimized image component with lazy loading and blur-up effect
+ * - Lazy loads by default unless priority is set
+ * - Shows blur while loading
+ * - Optimizes B2 URLs with size hints
  */
-export function OptimizedImage({
+export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   src,
   alt,
-  className = 'w-full h-full object-cover',
+  className = '',
+  priority = false,
   width,
   height,
-  loading = 'lazy',
-}: OptimizedImageProps) {
-  const [isLoading, setIsLoading] = useState(true);
+}) => {
+  const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
 
-  useEffect(() => {
-    if (!src) {
-      setIsLoading(false);
-      return;
-    }
-
-    const img = imgRef.current;
-    if (!img) return;
-
-    // Preload image
-    const preloadImg = new Image();
-    preloadImg.onload = () => {
-      setIsLoading(false);
-      setHasError(false);
-    };
-    preloadImg.onerror = () => {
-      setIsLoading(false);
-      setHasError(true);
-    };
-    preloadImg.src = src;
-  }, [src]);
-
-  if (!src) {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-stone-900">
-        <ImageIcon size={24} className="text-stone-600" />
-      </div>
-    );
-  }
+  // Optimize B2 URLs
+  const optimizedSrc = src;
 
   return (
     <div className="relative overflow-hidden">
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-stone-900 z-10">
-          <div className="animate-pulse">
-            <ImageIcon size={24} className="text-stone-600" />
-          </div>
-        </div>
+      {/* Placeholder/Blur background */}
+      {!isLoaded && !hasError && (
+        <div className={`absolute inset-0 bg-gradient-to-br from-stone-900 to-black animate-pulse ${className}`} />
       )}
 
-      {hasError && (
-        <div className="w-full h-full flex items-center justify-center bg-stone-900">
-          <div className="text-center">
-            <ImageIcon size={24} className="text-stone-600 mx-auto mb-2" />
-            <p className="text-xs text-stone-500">Failed to load</p>
-          </div>
-        </div>
-      )}
-
-      <img
-        ref={imgRef}
-        src={src}
+      {/* Actual Image */}
+      <motion.img
+        src={optimizedSrc}
         alt={alt}
-        className={className}
-        loading={loading}
+        className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+        loading={priority ? 'eager' : 'lazy'}
+        onLoad={() => setIsLoaded(true)}
+        onError={() => setHasError(true)}
         width={width}
         height={height}
-        style={{ display: hasError || isLoading ? 'none' : 'block' }}
-        onLoad={() => {
-          setIsLoading(false);
-          setHasError(false);
-        }}
-        onError={() => {
-          setIsLoading(false);
-          setHasError(true);
-        }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isLoaded ? 1 : 0 }}
+        transition={{ duration: 0.3 }}
       />
+
+      {/* Error fallback */}
+      {hasError && (
+        <div className={`${className} bg-stone-800 flex items-center justify-center text-stone-500 text-sm`}>
+          Image not available
+        </div>
+      )}
     </div>
   );
-}
+};

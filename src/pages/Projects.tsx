@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, X } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
@@ -90,6 +90,9 @@ export const PROJECTS = [
 ];
 
 export default function Projects() {
+  const location = useLocation();
+  const selectedCategoryFromState = (location.state as any)?.selectedCategory || null;
+
   const { data: supabaseProjects, loading, error } = useProjects();
   const [projects, setProjects] = useState(() => PROJECTS);
   const [selectedProject, setSelectedProject] = useState<typeof PROJECTS[0] | null>(null);
@@ -104,6 +107,11 @@ export default function Projects() {
     }
   }, [supabaseProjects]);
 
+  // Filter projects by selected category
+  const filteredProjects = selectedCategoryFromState
+    ? projects.filter((p) => p.category === selectedCategoryFromState)
+    : projects;
+
   const getGridClass = (size: string) => {
     if (size === 'large') return 'md:col-span-2 md:row-span-2';
     if (size === 'medium') return 'md:col-span-1 md:row-span-1';
@@ -115,6 +123,18 @@ export default function Projects() {
     if (fadeTimeoutRef.current[projectId]) {
       clearTimeout(fadeTimeoutRef.current[projectId]);
     }
+
+    // Preload project images on hover for faster modal opening
+    const project = filteredProjects.find(p => p.id === projectId);
+    if (project && project.images) {
+      project.images.forEach((img) => {
+        if (!img.startsWith('data:') && !img.includes('blob:')) {
+          const imgPreload = new Image();
+          imgPreload.src = img;
+        }
+      });
+    }
+
     setHoveredProjectId(projectId);
   };
 
@@ -126,6 +146,19 @@ export default function Projects() {
         setHoveredProjectId(null);
       }, 3000);
     }
+  };
+
+  const isVideoUrl = (url: string) => {
+    if (!url) return false;
+
+    // Check for video MIME types in base64 data URLs
+    if (url.startsWith('data:video/')) {
+      return true;
+    }
+
+    // Check for video file extensions
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
+    return videoExtensions.some(ext => url.toLowerCase().includes(ext));
   };
 
   if (loading) {
@@ -187,7 +220,7 @@ export default function Projects() {
           transition={{ duration: 0.8 }}
           className="text-5xl md:text-7xl font-light mb-4 text-white"
         >
-          Our Projects
+          {selectedCategoryFromState ? selectedCategoryFromState : 'Our Projects'}
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -195,14 +228,17 @@ export default function Projects() {
           transition={{ duration: 0.8, delay: 0.1 }}
           className="text-stone-400 text-lg max-w-2xl"
         >
-          Explore our portfolio of architectural masterpieces
+          {selectedCategoryFromState
+            ? `Explore our ${selectedCategoryFromState.toLowerCase()} projects`
+            : 'Explore our portfolio of architectural masterpieces'
+          }
         </motion.p>
       </div>
 
       {/* Masonry Gallery */}
       <div className="px-8 pb-32 bg-black">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px] md:auto-rows-[350px]">
-          {projects.map((project, idx) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[400px] md:auto-rows-[400px]">
+          {filteredProjects.map((project, idx) => (
             <motion.div
               key={project.id}
               initial={{ opacity: 0, y: 20 }}
@@ -218,11 +254,12 @@ export default function Projects() {
             >
               <div className="w-full h-full relative bg-black">
                 {/* Image with fade on hover */}
-                <div className="w-full h-full overflow-hidden">
+                <div className="w-full h-full overflow-hidden bg-stone-900">
                   <motion.img
                     src={project.images[0]}
                     alt={project.name}
                     className="w-full h-full object-cover"
+                    loading="lazy"
                     animate={{
                       opacity: hoveredProjectId === project.id ? 1 : 0.15,
                       scale: hoveredProjectId === project.id ? 1.08 : 1,
@@ -313,15 +350,34 @@ export default function Projects() {
                   className="max-w-6xl mx-auto mb-12"
                 >
                   <div className="h-[600px] rounded-lg overflow-hidden shadow-lg mb-8 bg-stone-900">
-                    <motion.img
-                      key={selectedImageIndex}
-                      src={selectedProject.images[selectedImageIndex]}
-                      alt={`${selectedProject.name} - View ${selectedImageIndex + 1}`}
-                      className="w-full h-full object-cover"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ duration: 0.5 }}
-                    />
+                    {isVideoUrl(selectedProject.images[selectedImageIndex]) ? (
+                      <motion.div
+                        key={selectedImageIndex}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5 }}
+                        className="w-full h-full"
+                      >
+                        <video
+                          src={selectedProject.images[selectedImageIndex]}
+                          controls
+                          controlsList="nodownload"
+                          preload="metadata"
+                          className="w-full h-full object-cover"
+                          style={{ background: '#1c1917' }}
+                        />
+                      </motion.div>
+                    ) : (
+                      <motion.img
+                        key={selectedImageIndex}
+                        src={selectedProject.images[selectedImageIndex]}
+                        alt={`${selectedProject.name} - View ${selectedImageIndex + 1}`}
+                        className="w-full h-full object-cover"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.5 }}
+                      />
+                    )}
                   </div>
 
                   {/* Image Counter */}
@@ -332,20 +388,29 @@ export default function Projects() {
                   {/* Image Navigation Thumbnails */}
                   {selectedProject.images.length > 1 && (
                     <div className="flex gap-4 overflow-x-auto pb-2">
-                      {selectedProject.images.map((_, idx) => (
+                      {selectedProject.images.map((img, idx) => (
                         <motion.button
                           key={idx}
                           onClick={() => setSelectedImageIndex(idx)}
-                          className={`h-20 w-24 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                          className={`h-20 w-24 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all relative bg-stone-800 ${
                             selectedImageIndex === idx ? 'border-white scale-105' : 'border-stone-600 hover:border-stone-500'
                           }`}
                           whileHover={{ scale: 1.05 }}
                         >
-                          <img
-                            src={selectedProject.images[idx]}
-                            alt={`Thumbnail ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                          />
+                          {isVideoUrl(img) ? (
+                            <>
+                              <div className="w-full h-full bg-black/80 flex items-center justify-center">
+                                <span className="text-2xl">🎬</span>
+                              </div>
+                            </>
+                          ) : (
+                            <img
+                              src={img}
+                              alt={`Thumbnail ${idx + 1}`}
+                              loading="lazy"
+                              className="w-full h-full object-cover"
+                            />
+                          )}
                         </motion.button>
                       ))}
                     </div>

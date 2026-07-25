@@ -17,7 +17,15 @@ export async function uploadToB2(
 
     if (onProgress) onProgress(10);
 
-    // Always use real API endpoint
+    // Use simulation mode for local development
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+    if (isDev) {
+      console.log('📦 Using simulation mode (local dev)');
+      return await simulateB2Upload(file, sanitizedFileName, onProgress);
+    }
+
+    // Use real API endpoint for production
     return await realB2Upload(file, sanitizedFileName, onProgress);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -31,9 +39,11 @@ export async function uploadToB2(
 
 /**
  * Simulate B2 upload for local development
- * Uses placeholder image from /public folder (works locally)
+ * For videos: Creates blob URL from file
+ * For images: Uses placeholder from /public folder
  */
 function simulateB2Upload(
+  file: File | undefined,
   fileName: string,
   onProgress?: (progress: number) => void
 ): Promise<{ success: boolean; url?: string; error?: string }> {
@@ -44,28 +54,29 @@ function simulateB2Upload(
     setTimeout(() => {
       if (onProgress) onProgress(75);
 
-      // Use placeholder image that actually exists in dev
-      // This simulates what B2 would return, but uses local placeholder
+      // Check if it's a video or image
       const isImage = fileName.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp)$/);
-      const isVideo = fileName.toLowerCase().match(/\.(mp4|webm|mov)$/);
+      const isVideo = fileName.toLowerCase().match(/\.(mp4|webm|mov|avi|mkv)$/);
 
-      // For dev mode, use placeholder URLs that work locally
       let devUrl: string;
-      if (isImage) {
-        devUrl = '/architecture-1.jpg'; // Placeholder from /public
-      } else if (isVideo) {
-        devUrl = '/sample-video.mp4'; // Placeholder video (if exists)
+
+      if (isVideo && file) {
+        // For videos: Create a blob URL from the actual file (works in current session)
+        devUrl = URL.createObjectURL(file);
+        console.log('✅ Mock video upload (blob URL):', devUrl);
+      } else if (isImage) {
+        // For images: Use placeholder from /public
+        devUrl = '/architecture-1.jpg';
+        console.log('✅ Mock image upload (placeholder):', devUrl);
       } else {
         devUrl = '/file-placeholder.txt';
       }
-
-      console.log('✅ Mock upload successful (dev placeholder):', devUrl);
 
       if (onProgress) onProgress(100);
 
       resolve({
         success: true,
-        url: devUrl, // Return local placeholder URL
+        url: devUrl,
       });
     }, 1000);
   });

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut, Menu, X, Home, Settings, Edit2, Image, FileText, ArrowLeft, Youtube, Trash2, Plus, Mail, Check, Download, Zap } from 'lucide-react';
-import { compressImage, compressVideo, formatFileSize } from '../utils/compression';
+import { compressImage, compressVideo, formatFileSize, shouldCompress } from '../utils/compression';
 import { uploadToB2 } from '../utils/b2-upload';
 import { useAdminAuth, useProjects, useSupabaseMutation, useJournalPosts, useContactMessages, useGallery, useEventVideos, useContentSettings } from '../hooks/useSupabaseData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
@@ -34,7 +34,7 @@ const DEFAULT_CONTACT = { email: 'inquiry@1studioarch.com', phone: '+44 (0) 20 1
 
 export default function Admin() {
   const navigate = useNavigate();
-  const { loginWithSupabase, logout } = useAdminAuth();
+  const { loginWithSupabase, logout, restoreSession } = useAdminAuth();
   const { data: supabaseProjects, refetch: refetchProjects, loading: projectsLoading } = useProjects();
   const { data: supabaseJournalPosts, refetch: refetchJournalPosts, loading: journalLoading } = useJournalPosts();
   const { data: contactMessages, refetch: refetchMessages, loading: messagesLoading } = useContactMessages();
@@ -59,6 +59,12 @@ export default function Admin() {
   const [userSession, setUserSession] = useState(null);
   const [homeQuote, setHomeQuote] = useState("Space is the beginning of all architecture. The creation of light and shade, the volume of material, and the void between them define the soul of design.");
   const [philosophyText, setPhilosophyText] = useState("At 1StudioArch, we believe architecture is the thoughtful arrangement of space, light, and material...");
+  const [isUploadingProject, setIsUploadingProject] = useState(false);
+  const [isUploadingEdit, setIsUploadingEdit] = useState(false);
+  const [selectedProjectFiles, setSelectedProjectFiles] = useState<FileList | null>(null);
+  const [selectedEditFiles, setSelectedEditFiles] = useState<FileList | null>(null);
+  const [filesReadyToCreate, setFilesReadyToCreate] = useState(false);
+  const [filesReadyToUpdate, setFilesReadyToUpdate] = useState(false);
 
   // Events - Using Supabase
   const [eventVideos, setEventVideos] = useState(videos || []);
@@ -75,6 +81,18 @@ export default function Admin() {
       setEventVideos(videos);
     }
   }, [videos]);
+
+  // Restore session on mount
+  useEffect(() => {
+    const checkSession = async () => {
+      const result = await restoreSession();
+      if (result.success && result.user) {
+        setIsAuthenticated(true);
+        setUserSession(result.user);
+      }
+    };
+    checkSession();
+  }, []);
 
   // Contact
   const [contactInfo, setContactInfo] = useState(() => {
@@ -148,6 +166,13 @@ export default function Admin() {
   const showSuccessNotification = (message: string) => {
     setSuccessMessage(message); setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 3000);
+  };
+
+  const isVideoUrl = (url: string) => {
+    if (!url) return false;
+    if (url.startsWith('data:video/')) return true;
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
+    return videoExtensions.some(ext => url.toLowerCase().includes(ext));
   };
 
   const handleAddVideo = async (e: React.FormEvent) => {
@@ -511,7 +536,6 @@ export default function Admin() {
       year: editProjectData.year,
       category: editProjectData.category,
       description: editProjectData.description,
-      locationmapurl: editProjectData.locationmapurl,
       images: editingProjectImages,
     });
     if (result.success) {
@@ -544,7 +568,7 @@ export default function Admin() {
   };
 
   const handleAddProjectImage = () => {
-    if (editingProjectImages.length >= 5) { showSuccessNotification('Maximum 5 images per project'); return; }
+    if (editingProjectImages.length >= 20) { showSuccessNotification('Maximum 20 images/videos per project'); return; }
     if (!newProjectImageUrl.trim() && !newProjectImageFile) { return; }
 
     if (newProjectImageFile) {
@@ -560,6 +584,87 @@ export default function Admin() {
       setEditingProjectImages(prev => [...prev, newProjectImageUrl.trim()]);
       setNewProjectImageUrl('');
     }
+  };
+
+  const handleMultipleEditProjectImageUpload = (files: FileList | null) => {
+    if (!files) return;
+
+    const filesToAdd = Array.from(files);
+    const canAdd = 20 - editingProjectImages.length;
+
+    if (filesToAdd.length > canAdd) {
+      showSuccessNotification(`Can only add ${canAdd} more files (limit: 20)`);
+      return;
+    }
+
+    setIsUploadingEdit(true);
+    let processedCount = 0;
+
+    filesToAdd.forEach((file) => {
+      const isVideo = file.type.startsWith('video/');
+
+      if (isVideo) {
+        // Upload videos to B2 (handles large files, no delay)
+        uploadToB2(file, `projects/${Date.now()}_${file.name}`, (progress) => {
+          console.log(`Uploading ${file.name}: ${progress}%`);
+        }).then((result) => {
+          if (result.success) {
+            console.log(`✅ Video uploaded to B2: ${result.url}`);
+            setEditingProjectImages(prev => [...prev, result.url]);
+            processedCount++;
+
+            if (processedCount === filesToAdd.length) {
+              showSuccessNotification(`✅ Added ${filesToAdd.length} file(s)`);
+              setNewProjectImageFile(null);
+              setIsUploadingEdit(false);
+            }
+          }
+        }).catch((error) => {
+          console.error('B2 upload error:', error);
+          processedCount++;
+          if (processedCount === filesToAdd.length) {
+            setIsUploadingEdit(false);
+          }
+        });
+      } else {
+        // Images: Compress if needed, then convert to base64
+        if (shouldCompress(file)) {
+          showSuccessNotification(`📦 Compressing ${file.name}...`);
+          compressImage(file, (progress) => {
+            console.log(`Compressing: ${progress}%`);
+          }).then((compressedFile) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const dataUrl = event.target?.result as string;
+              setEditingProjectImages(prev => [...prev, dataUrl]);
+              processedCount++;
+
+              if (processedCount === filesToAdd.length) {
+                showSuccessNotification(`✅ Added ${filesToAdd.length} file(s)`);
+                setNewProjectImageFile(null);
+                setIsUploadingEdit(false);
+              }
+            };
+            reader.readAsDataURL(compressedFile);
+          });
+        } else {
+          // No compression needed - convert directly to base64
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            setEditingProjectImages(prev => [...prev, dataUrl]);
+            processedCount++;
+
+            if (processedCount === filesToAdd.length) {
+              showSuccessNotification(`✅ Added ${filesToAdd.length} file(s)`);
+              setNewProjectImageFile(null);
+              setIsUploadingEdit(false);
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+    });
   };
 
   const handleRemoveProjectImage = (index: number) => {
@@ -592,21 +697,23 @@ export default function Admin() {
       category: newProjectData.category?.trim() || '',
       description: newProjectData.description?.trim() || '',
       images: newProjectImages.length > 0 ? newProjectImages : ['/architecture-1.jpg'],
-      locationmapurl: newProjectData.locationmapurl,
     });
 
     if (result.success) {
       setNewProjectData({ name: '', location: '', year: new Date().getFullYear().toString(), category: '', description: '' });
       setNewProjectImages([]);
+      setSelectedProjectFiles(null);
+      setFilesReadyToCreate(false);
+      setIsUploadingProject(false);
       refetchProjects();
-      showSuccessNotification('Project created successfully!');
+      showSuccessNotification('✅ Project created successfully!');
     } else {
       showSuccessNotification('Failed to create project');
     }
   };
 
   const handleAddNewProjectImage = () => {
-    if (newProjectImages.length >= 5) { showSuccessNotification('Maximum 5 images per project'); return; }
+    if (newProjectImages.length >= 20) { showSuccessNotification('Maximum 20 images/videos per project'); return; }
     if (!newProjectImageUrl.trim() && !newProjectImageFile) { return; }
 
     if (newProjectImageFile) {
@@ -622,6 +729,232 @@ export default function Admin() {
       setNewProjectImages(prev => [...prev, newProjectImageUrl.trim()]);
       setNewProjectImageUrl('');
     }
+  };
+
+  const handleSelectProjectFiles = (files: FileList | null) => {
+    if (!files) return;
+
+    const canAdd = 20 - newProjectImages.length;
+    if (files.length > canAdd) {
+      showSuccessNotification(`Can only add ${canAdd} more files (limit: 20)`);
+      return;
+    }
+
+    setSelectedProjectFiles(files);
+    setFilesReadyToCreate(true);
+    showSuccessNotification(`📁 ${files.length} file(s) selected. Click "Upload Files" to proceed.`);
+  };
+
+  const handleSelectEditFiles = (files: FileList | null) => {
+    if (!files) return;
+
+    const canAdd = 20 - editingProjectImages.length;
+    if (files.length > canAdd) {
+      showSuccessNotification(`Can only add ${canAdd} more files (limit: 20)`);
+      return;
+    }
+
+    setSelectedEditFiles(files);
+    setFilesReadyToUpdate(true);
+    showSuccessNotification(`📁 ${files.length} file(s) selected. Click "Upload Files" to proceed.`);
+  };
+
+  const handleUploadEditFiles = async () => {
+    if (!selectedEditFiles) return;
+
+    const filesToAdd = Array.from(selectedEditFiles);
+    const canAdd = 20 - editingProjectImages.length;
+
+    if (filesToAdd.length > canAdd) {
+      showSuccessNotification(`Can only add ${canAdd} more files (limit: 20)`);
+      return;
+    }
+
+    setIsUploadingEdit(true);
+    let processedCount = 0;
+
+    for (const file of filesToAdd) {
+      try {
+        // Compress if needed
+        let fileToUpload = file;
+        if (shouldCompress(file)) {
+          showSuccessNotification(`📦 Compressing ${file.name}...`);
+          if (file.type.startsWith('video/')) {
+            fileToUpload = (await compressVideo(file, (progress) => {
+              console.log(`Compressing: ${progress}%`);
+            })) as File;
+          } else {
+            fileToUpload = (await compressImage(file, (progress) => {
+              console.log(`Compressing: ${progress}%`);
+            })) as File;
+          }
+        }
+
+        // Convert to base64
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const dataUrl = event.target?.result as string;
+          setEditingProjectImages(prev => [...prev, dataUrl]);
+          processedCount++;
+
+          if (processedCount === filesToAdd.length) {
+            showSuccessNotification(`✅ All files uploaded successfully!`);
+            setSelectedEditFiles(null);
+            setFilesReadyToUpdate(false);
+            setIsUploadingEdit(false);
+          }
+        };
+        reader.readAsDataURL(fileToUpload);
+      } catch (error) {
+        console.error('File processing error:', error);
+        processedCount++;
+        if (processedCount === filesToAdd.length) {
+          setIsUploadingEdit(false);
+        }
+      }
+    }
+  };
+
+  const handleUploadProjectFiles = async () => {
+    if (!selectedProjectFiles) return;
+
+    const filesToAdd = Array.from(selectedProjectFiles);
+    const canAdd = 20 - newProjectImages.length;
+
+    if (filesToAdd.length > canAdd) {
+      showSuccessNotification(`Can only add ${canAdd} more files (limit: 20)`);
+      return;
+    }
+
+    setIsUploadingProject(true);
+    let processedCount = 0;
+
+    for (const file of filesToAdd) {
+      const isVideo = file.type.startsWith('video/');
+
+      try {
+        if (isVideo) {
+          // Upload videos to B2 (handles large files, no delay)
+          uploadToB2(file, `projects/${Date.now()}_${file.name}`, (progress) => {
+            console.log(`Uploading ${file.name}: ${progress}%`);
+          }).then((result) => {
+            if (result.success) {
+              console.log(`✅ Video uploaded to B2: ${result.url}`);
+              setNewProjectImages(prev => [...prev, result.url]);
+              processedCount++;
+
+              if (processedCount === filesToAdd.length) {
+                showSuccessNotification(`✅ All files uploaded successfully!`);
+                setSelectedProjectFiles(null);
+                setFilesReadyToCreate(false);
+                setIsUploadingProject(false);
+              }
+            }
+          }).catch((error) => {
+            console.error('B2 upload error:', error);
+            processedCount++;
+            if (processedCount === filesToAdd.length) {
+              setIsUploadingProject(false);
+            }
+          });
+        } else {
+          // Images: Compress if needed, then convert to base64
+          let fileToUpload = file;
+          if (shouldCompress(file)) {
+            showSuccessNotification(`📦 Compressing ${file.name}...`);
+            fileToUpload = (await compressImage(file, (progress) => {
+              console.log(`Compressing: ${progress}%`);
+            })) as File;
+          }
+
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            console.log(`✅ Image stored as base64`);
+            setNewProjectImages(prev => [...prev, dataUrl]);
+            processedCount++;
+
+            if (processedCount === filesToAdd.length) {
+              showSuccessNotification(`✅ All files uploaded successfully!`);
+              setSelectedProjectFiles(null);
+              setFilesReadyToCreate(false);
+              setIsUploadingProject(false);
+            }
+          };
+          reader.readAsDataURL(fileToUpload);
+        }
+      } catch (error) {
+        console.error('File processing error:', error);
+        processedCount++;
+        if (processedCount === filesToAdd.length) {
+          setIsUploadingProject(false);
+        }
+      }
+    }
+  };
+
+  const handleMultipleProjectImageUpload = (files: FileList | null) => {
+    if (!files) return;
+
+    const filesToAdd = Array.from(files);
+    const canAdd = 20 - newProjectImages.length;
+
+    if (filesToAdd.length > canAdd) {
+      showSuccessNotification(`Can only add ${canAdd} more files (limit: 20)`);
+      return;
+    }
+
+    setIsUploadingProject(true);
+    let processedCount = 0;
+
+    filesToAdd.forEach((file) => {
+      const isVideo = file.type.startsWith('video/');
+
+      if (isVideo) {
+        // Upload video to B2
+        uploadToB2(file, `projects/${Date.now()}_${file.name}`, (progress) => {
+          console.log(`Uploading ${file.name}: ${progress}%`);
+        }).then((result) => {
+          if (result.success) {
+            setNewProjectImages(prev => [...prev, result.url]);
+            processedCount++;
+            if (processedCount === filesToAdd.length) {
+              showSuccessNotification(`✅ Added ${filesToAdd.length} file(s)`);
+              setNewProjectImageFile(null);
+              setIsUploadingProject(false);
+            }
+          } else {
+            showSuccessNotification(`Failed to upload ${file.name}`);
+            processedCount++;
+            if (processedCount === filesToAdd.length) {
+              setIsUploadingProject(false);
+            }
+          }
+        }).catch((error) => {
+          console.error('Upload error:', error);
+          showSuccessNotification(`Error uploading ${file.name}`);
+          processedCount++;
+          if (processedCount === filesToAdd.length) {
+            setIsUploadingProject(false);
+          }
+        });
+      } else {
+        // Convert images to base64
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const dataUrl = event.target?.result as string;
+          setNewProjectImages(prev => [...prev, dataUrl]);
+          processedCount++;
+
+          if (processedCount === filesToAdd.length) {
+            showSuccessNotification(`✅ Added ${filesToAdd.length} file(s)`);
+            setNewProjectImageFile(null);
+            setIsUploadingProject(false);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    });
   };
 
   const handleRemoveNewProjectImage = (index: number) => {
@@ -900,25 +1233,19 @@ export default function Admin() {
                       />
                     </div>
 
-                    {/* Location Map URL */}
-                    <div>
-                      <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Location Map Embed URL</label>
-                      <textarea
-                        value={newProjectData.locationmapurl || ''}
-                        onChange={e => setNewProjectData(prev => ({ ...prev, locationmapurl: e.target.value }))}
-                        placeholder="Google Maps embed URL"
-                        rows={2}
-                        className="w-full bg-white/10 border border-white/20 rounded px-4 py-3 text-white text-sm placeholder-stone-500 focus:outline-none focus:border-white/40 resize-none"
-                      />
-                    </div>
-
                     {/* Project Images */}
                     <div>
-                      <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Project Images ({newProjectImages.length}/5)</label>
+                      <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Project Images/Videos ({newProjectImages.length}/20)</label>
                       <div className="space-y-2 mb-3">
                         {newProjectImages.map((img, idx) => (
                           <div key={idx} className="flex items-center gap-2 bg-white/5 p-2 rounded border border-white/10">
-                            <img src={img} alt={`Project ${idx + 1}`} className="w-12 h-12 object-cover rounded" />
+                            {isVideoUrl(img) ? (
+                              <div className="w-12 h-12 rounded bg-black/50 flex items-center justify-center flex-shrink-0">
+                                <span className="text-lg">🎬</span>
+                              </div>
+                            ) : (
+                              <img src={img} alt={`Project ${idx + 1}`} className="w-12 h-12 object-cover rounded" />
+                            )}
                             <span className="text-xs text-stone-400 flex-1 truncate">{img.substring(0, 40)}...</span>
                             <motion.button
                               whileHover={{ scale: 1.1 }}
@@ -931,7 +1258,7 @@ export default function Admin() {
                           </div>
                         ))}
                       </div>
-                      {newProjectImages.length < 5 && (
+                      {newProjectImages.length < 20 && (
                         <div className="space-y-2">
                           <input
                             type="text"
@@ -942,27 +1269,50 @@ export default function Admin() {
                           />
                           <input
                             type="file"
-                            accept="image/*"
-                            onChange={e => setNewProjectImageFile(e.target.files?.[0] || null)}
+                            multiple
+                            accept="image/*,video/*"
+                            onChange={e => handleSelectProjectFiles(e.target.files)}
                             className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-stone-400 text-sm file:bg-white file:text-black file:px-2 file:py-1 file:border-0 file:rounded file:text-xs file:cursor-pointer file:mr-2 hover:file:bg-stone-200"
                           />
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            type="button"
-                            onClick={handleAddNewProjectImage}
-                            className="w-full px-3 py-2 bg-white/20 border border-white/30 rounded text-xs uppercase tracking-widest hover:bg-white/30 flex items-center justify-center gap-2"
-                          >
-                            <Plus size={12} /> Add Image
-                          </motion.button>
+                          {selectedProjectFiles && (
+                            <motion.button
+                              type="button"
+                              onClick={handleUploadProjectFiles}
+                              disabled={isUploadingProject}
+                              whileHover={isUploadingProject ? {} : { scale: 1.02 }}
+                              className={`w-full px-3 py-2 rounded text-xs uppercase tracking-widest flex items-center justify-center gap-2 ${
+                                isUploadingProject
+                                  ? 'bg-blue-400/20 border border-blue-400/40 text-blue-300 cursor-wait'
+                                  : 'bg-blue-500/20 border border-blue-500/40 text-blue-300 hover:bg-blue-500/30'
+                              }`}
+                            >
+                              {isUploadingProject ? '⏳ Uploading...' : '📤 Upload Files'}
+                            </motion.button>
+                          )}
                         </div>
                       )}
                     </div>
                   </div>
 
+                  {selectedProjectFiles && !filesReadyToCreate && (
+                    <div className="w-full px-6 py-3 rounded bg-red-500/20 border border-red-500/40 text-red-300 text-sm font-light uppercase tracking-widest text-center">
+                      ❌ Please upload files first by clicking "Upload Files" button
+                    </div>
+                  )}
+                  {isUploadingProject && (
+                    <div className="w-full px-6 py-3 rounded bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 text-sm font-light uppercase tracking-widest text-center">
+                      ⏳ Uploading files... Complete uploads before creating project
+                    </div>
+                  )}
                   <motion.button
                     type="submit"
-                    whileHover={{ scale: 1.02 }}
-                    className="w-full bg-white text-black px-6 py-3 rounded font-light uppercase tracking-widest text-sm hover:bg-stone-200 flex items-center justify-center gap-2"
+                    disabled={isUploadingProject || (selectedProjectFiles && !filesReadyToCreate)}
+                    whileHover={(isUploadingProject || (selectedProjectFiles && !filesReadyToCreate)) ? {} : { scale: 1.02 }}
+                    className={`w-full px-6 py-3 rounded font-light uppercase tracking-widest text-sm flex items-center justify-center gap-2 ${
+                      isUploadingProject || (selectedProjectFiles && !filesReadyToCreate)
+                        ? 'bg-stone-400 text-stone-600 cursor-not-allowed opacity-50'
+                        : 'bg-white text-black hover:bg-stone-200'
+                    }`}
                   >
                     <Plus size={16} /> Create Project
                   </motion.button>
@@ -1004,17 +1354,17 @@ export default function Admin() {
                               rows={3} className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-white/40 resize-none" />
                           </div>
                           <div>
-                            <label className="text-xs uppercase tracking-widest text-stone-400 block mb-1">Location Map Embed URL</label>
-                            <textarea value={(editProjectData.locationmapurl ?? project.locationmapurl ?? '')} onChange={e => setEditProjectData(prev => ({ ...prev, locationmapurl: e.target.value }))}
-                              rows={2} placeholder="Google Maps embed URL" className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm placeholder-stone-500 focus:outline-none focus:border-white/40 resize-none" />
-                            <p className="text-xs text-stone-500 mt-1">Optional: Paste the full iframe src URL from Google Maps</p>
-                          </div>
-                          <div>
-                            <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Project Images ({editingProjectImages.length}/5)</label>
+                            <label className="text-xs uppercase tracking-widest text-stone-400 block mb-2">Project Images ({editingProjectImages.length}/20)</label>
                             <div className="space-y-2 mb-3">
                               {editingProjectImages.map((img, idx) => (
                                 <div key={idx} className="flex items-center gap-2 bg-white/5 p-2 rounded border border-white/10">
-                                  <img src={img} alt={`Project ${idx + 1}`} className="w-12 h-12 object-cover rounded" />
+                                  {isVideoUrl(img) ? (
+                                    <div className="w-12 h-12 rounded bg-black/50 flex items-center justify-center flex-shrink-0">
+                                      <span className="text-lg">🎬</span>
+                                    </div>
+                                  ) : (
+                                    <img src={img} alt={`Project ${idx + 1}`} className="w-12 h-12 object-cover rounded" />
+                                  )}
                                   <span className="text-xs text-stone-400 flex-1 truncate">{img.substring(0, 40)}...</span>
                                   <motion.button whileHover={{ scale: 1.1 }} onClick={() => handleRemoveProjectImage(idx)} className="p-1 bg-red-500/20 border border-red-500/40 rounded hover:bg-red-500/30">
                                     <Trash2 size={12} className="text-red-400" />
@@ -1022,13 +1372,25 @@ export default function Admin() {
                                 </div>
                               ))}
                             </div>
-                            {editingProjectImages.length < 5 && (
+                            {editingProjectImages.length < 20 && (
                               <div className="space-y-2">
                                 <input type="text" value={newProjectImageUrl} onChange={e => setNewProjectImageUrl(e.target.value)} placeholder="Image URL or upload file" className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white text-sm placeholder-stone-500 focus:outline-none focus:border-white/40" />
-                                <input type="file" accept="image/*" onChange={e => setNewProjectImageFile(e.target.files?.[0] || null)} className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-stone-400 text-sm file:bg-white file:text-black file:px-2 file:py-1 file:border-0 file:rounded file:text-xs file:cursor-pointer file:mr-2 hover:file:bg-stone-200" />
-                                <motion.button whileHover={{ scale: 1.02 }} type="button" onClick={handleAddProjectImage} className="w-full px-3 py-2 bg-white/20 border border-white/30 rounded text-xs uppercase tracking-widest hover:bg-white/30 flex items-center justify-center gap-2">
-                                  <Plus size={12} /> Add Image
-                                </motion.button>
+                                <input type="file" multiple accept="image/*,video/*" onChange={e => handleSelectEditFiles(e.target.files)} className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-stone-400 text-sm file:bg-white file:text-black file:px-2 file:py-1 file:border-0 file:rounded file:text-xs file:cursor-pointer file:mr-2 hover:file:bg-stone-200" />
+                                {selectedEditFiles && (
+                                  <motion.button
+                                    type="button"
+                                    onClick={handleUploadEditFiles}
+                                    disabled={isUploadingEdit}
+                                    whileHover={isUploadingEdit ? {} : { scale: 1.02 }}
+                                    className={`w-full px-3 py-2 rounded text-xs uppercase tracking-widest flex items-center justify-center gap-2 ${
+                                      isUploadingEdit
+                                        ? 'bg-blue-400/20 border border-blue-400/40 text-blue-300 cursor-wait'
+                                        : 'bg-blue-500/20 border border-blue-500/40 text-blue-300 hover:bg-blue-500/30'
+                                    }`}
+                                  >
+                                    {isUploadingEdit ? '⏳ Uploading...' : '📤 Upload Files'}
+                                  </motion.button>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1050,7 +1412,19 @@ export default function Admin() {
                             <p className="text-sm text-stone-400">{project.location} · {project.year} · {project.category}</p>
                             <p className="text-sm text-stone-500 mt-2 max-w-xl">{project.description}</p>
                             {project.images && project.images.length > 0 && (
-                              <p className="text-xs text-stone-500 mt-2">📸 {Array.isArray(project.images) ? project.images.length : 0} image(s)</p>
+                              <>
+                                <p className="text-xs text-stone-500 mt-2">
+                                  📁 {Array.isArray(project.images) ? project.images.length : 0} file(s)
+                                  {project.images.length > 1 && (
+                                    <span className="text-stone-600">
+                                      {' • '}
+                                      {project.images.filter((img: string) =>
+                                        img.toLowerCase().match(/\.(mp4|webm|mov|avi|mkv)$/)
+                                      ).length} video(s)
+                                    </span>
+                                  )}
+                                </p>
+                              </>
                             )}
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
@@ -1349,7 +1723,7 @@ export default function Admin() {
                   ) : galleryImages.map(image => (
                     <motion.div key={image.id} whileHover={{ y: -5 }} className="bg-white/5 border border-white/10 rounded-lg overflow-hidden">
                       <div className="h-40 bg-stone-900 flex items-center justify-center overflow-hidden relative">
-                        <AdminImageDisplay src={image.url} alt={image.title} className="w-full h-full object-cover" />
+                        <AdminImageDisplay src={image.url} alt={image.title} loading="lazy" className="w-full h-full object-cover" />
                       </div>
                       <div className="p-4">
                         <p className="text-sm font-light mb-2 truncate">{image.title}</p>
