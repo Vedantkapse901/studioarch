@@ -1217,6 +1217,7 @@ export default function Admin() {
                           <option value="Hospitals" className="bg-stone-900 text-white">Hospitals</option>
                           <option value="Schools" className="bg-stone-900 text-white">Schools</option>
                           <option value="PMC" className="bg-stone-900 text-white">PMC</option>
+                          <option value="Interior" className="bg-stone-900 text-white">Interior</option>
                         </select>
                       </div>
                     </div>

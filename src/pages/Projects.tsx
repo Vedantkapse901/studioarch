@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, X } from 'lucide-react';
+import { ArrowLeft, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useProjects } from '../hooks/useSupabaseData';
 import { LoadingScreenWithText } from '../components/LoadingScreen';
@@ -113,6 +113,7 @@ export default function Projects() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [hoveredProjectId, setHoveredProjectId] = useState<number | null>(null);
   const fadeTimeoutRef = useRef<{ [key: number]: NodeJS.Timeout }>({});
+  const slideshowIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Update projects when Supabase data is loaded
   useEffect(() => {
@@ -120,6 +121,25 @@ export default function Projects() {
       setProjects(supabaseProjects as typeof PROJECTS);
     }
   }, [supabaseProjects]);
+
+  // Auto-advance slideshow when project is selected
+  useEffect(() => {
+    if (!selectedProject || selectedProject.images.length <= 1) return;
+
+    const startSlideshow = () => {
+      slideshowIntervalRef.current = setInterval(() => {
+        setSelectedImageIndex((prev) => (prev + 1) % selectedProject.images.length);
+      }, 5000); // Change image every 5 seconds
+    };
+
+    startSlideshow();
+
+    return () => {
+      if (slideshowIntervalRef.current) {
+        clearInterval(slideshowIntervalRef.current);
+      }
+    };
+  }, [selectedProject]);
 
   // Filter projects by selected category
   const filteredProjects = selectedCategoryFromState
@@ -338,19 +358,14 @@ export default function Projects() {
                   {selectedProject.category}
                 </span>
                 <h1 className="text-6xl md:text-7xl font-light mb-6 text-white">{selectedProject.name}</h1>
-                <div className="grid md:grid-cols-2 gap-8 mb-12">
+                <div className="flex items-center gap-8 mb-12">
                   <div>
-                    <p className="text-stone-400 text-lg leading-relaxed">{selectedProject.description}</p>
+                    <p className="text-xs uppercase tracking-widest text-stone-500 mb-2">Location</p>
+                    <p className="text-lg text-white">{selectedProject.location}</p>
                   </div>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-stone-500 mb-2">Location</p>
-                      <p className="text-lg text-white">{selectedProject.location}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-widest text-stone-500 mb-2">Year</p>
-                      <p className="text-lg text-white">{selectedProject.year}</p>
-                    </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-stone-500 mb-2">Year</p>
+                    <p className="text-lg text-white">{selectedProject.year}</p>
                   </div>
                 </div>
               </motion.div>
@@ -361,36 +376,77 @@ export default function Projects() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4, duration: 0.8 }}
-                  className="max-w-6xl mx-auto mb-12"
+                  className="w-full mb-12 -mx-8 px-8"
                 >
-                  <div className="h-[600px] rounded-lg overflow-hidden shadow-lg mb-8 bg-stone-900">
-                    {isVideoUrl(selectedProject.images[selectedImageIndex]) ? (
-                      <motion.div
-                        key={selectedImageIndex}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.5 }}
-                        className="w-full h-full"
+                  <div className="relative flex items-center gap-4 mb-8">
+                    {/* Previous Button */}
+                    {selectedProject.images.length > 1 && (
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          setSelectedImageIndex((selectedImageIndex - 1 + selectedProject.images.length) % selectedProject.images.length);
+                          // Reset slideshow timer on manual click
+                          if (slideshowIntervalRef.current) clearInterval(slideshowIntervalRef.current);
+                          slideshowIntervalRef.current = setInterval(() => {
+                            setSelectedImageIndex((prev) => (prev + 1) % selectedProject.images.length);
+                          }, 5000);
+                        }}
+                        className="p-3 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
                       >
-                        <video
+                        <ChevronLeft size={24} className="text-white" />
+                      </motion.button>
+                    )}
+
+                    {/* Main Image */}
+                    <div className="h-[750px] flex-1 rounded-lg overflow-hidden shadow-lg bg-stone-900">
+                      {isVideoUrl(selectedProject.images[selectedImageIndex]) ? (
+                        <motion.div
+                          key={selectedImageIndex}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.5 }}
+                          className="w-full h-full"
+                        >
+                          <video
+                            src={selectedProject.images[selectedImageIndex]}
+                            controls
+                            controlsList="nodownload"
+                            preload="metadata"
+                            className="w-full h-full object-cover"
+                            style={{ background: '#1c1917' }}
+                          />
+                        </motion.div>
+                      ) : (
+                        <motion.img
+                          key={selectedImageIndex}
                           src={selectedProject.images[selectedImageIndex]}
-                          controls
-                          controlsList="nodownload"
-                          preload="metadata"
+                          alt={`${selectedProject.name} - View ${selectedImageIndex + 1}`}
                           className="w-full h-full object-cover"
-                          style={{ background: '#1c1917' }}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.5 }}
                         />
-                      </motion.div>
-                    ) : (
-                      <motion.img
-                        key={selectedImageIndex}
-                        src={selectedProject.images[selectedImageIndex]}
-                        alt={`${selectedProject.name} - View ${selectedImageIndex + 1}`}
-                        className="w-full h-full object-cover"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.5 }}
-                      />
+                      )}
+                    </div>
+
+                    {/* Next Button */}
+                    {selectedProject.images.length > 1 && (
+                      <motion.button
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          setSelectedImageIndex((selectedImageIndex + 1) % selectedProject.images.length);
+                          // Reset slideshow timer on manual click
+                          if (slideshowIntervalRef.current) clearInterval(slideshowIntervalRef.current);
+                          slideshowIntervalRef.current = setInterval(() => {
+                            setSelectedImageIndex((prev) => (prev + 1) % selectedProject.images.length);
+                          }, 5000);
+                        }}
+                        className="p-3 bg-white/10 border border-white/20 rounded-full hover:bg-white/20 transition-colors flex-shrink-0"
+                      >
+                        <ChevronRight size={24} className="text-white" />
+                      </motion.button>
                     )}
                   </div>
 
@@ -401,7 +457,7 @@ export default function Projects() {
 
                   {/* Image Navigation Thumbnails */}
                   {selectedProject.images.length > 1 && (
-                    <div className="flex gap-4 overflow-x-auto pb-2">
+                    <div className={`flex gap-4 pb-2 ${selectedProject.images.length <= 5 ? 'justify-center' : 'overflow-x-auto'}`}>
                       {selectedProject.images.map((img, idx) => (
                         <motion.button
                           key={idx}
