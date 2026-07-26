@@ -83,7 +83,88 @@ function simulateB2Upload(
 }
 
 /**
+ * Chunked upload for large files (>50MB)
+ */
+async function chunkedB2Upload(
+  file: File,
+  fileName: string,
+  chunkSize: number,
+  onProgress?: (progress: number) => void
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  const chunks = Math.ceil(file.size / chunkSize);
+  const uploadId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  try {
+    for (let i = 0; i < chunks; i++) {
+      const start = i * chunkSize;
+      const end = Math.min(start + chunkSize, file.size);
+      const chunk = file.slice(start, end);
+
+      const formData = new FormData();
+      formData.append('chunk', chunk);
+      formData.append('chunkIndex', i.toString());
+      formData.append('totalChunks', chunks.toString());
+      formData.append('uploadId', uploadId);
+      formData.append('fileName', fileName);
+
+      const response = await fetch('/api/b2-upload', {
+        method: 'POST',
+        headers: {
+          'X-Upload-ID': uploadId,
+          'X-Chunk-Index': i.toString(),
+          'X-Total-Chunks': chunks.toString(),
+          'X-File-Name': fileName,
+        },
+        body: chunk,
+      });
+
+      if (!response.ok) {
+        if (response.status === 413) {
+          throw new Error('Chunk too large - server payload limit exceeded');
+        }
+        throw new Error(`Chunk upload failed: ${response.status}`);
+      }
+
+      const progress = Math.round(((i + 1) / chunks) * 100);
+      if (onProgress) onProgress(progress);
+
+      console.log(`📦 Chunk ${i + 1}/${chunks} uploaded (${progress}%)`);
+    }
+
+    // All chunks uploaded, finalize
+    const finalResponse = await fetch('/api/b2-upload', {
+      method: 'POST',
+      headers: {
+        'X-Upload-ID': uploadId,
+        'X-Finalize': 'true',
+        'X-File-Name': fileName,
+      },
+    });
+
+    if (!finalResponse.ok) {
+      throw new Error(`Upload finalization failed: ${finalResponse.status}`);
+    }
+
+    const data = await finalResponse.json();
+    console.log('✅ Chunked upload successful:', data.url);
+
+    return {
+      success: true,
+      url: data.url,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Chunked upload failed';
+    console.error('Chunked upload error:', errorMessage);
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
+
+/**
  * Real B2 upload via API endpoint (Vercel/Production)
+ * Handles large files with chunked upload for videos >50MB
  */
 async function realB2Upload(
   file: File,
@@ -91,13 +172,22 @@ async function realB2Upload(
   onProgress?: (progress: number) => void
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   const apiUrl = `/api/b2-upload`;
+  const CHUNK_SIZE = 5242880; // 5MB chunks for large files
+  const fileSize = file.size;
 
-  console.log('Calling B2 API:', apiUrl);
+  console.log('Calling B2 API:', apiUrl, { fileSize: `${(fileSize / 1024 / 1024).toFixed(2)}MB` });
 
+  // For large files, use chunked upload
+  if (fileSize > 50 * 1024 * 1024) {
+    console.log('📦 Large file detected, using chunked upload');
+    return await chunkedB2Upload(file, fileName, CHUNK_SIZE, onProgress);
+  }
+
+  // For smaller files, use direct upload
   const response = await fetch(apiUrl, {
     method: 'POST',
     headers: {
-      'X-File-Name': fileName, // Send plain filename - server will encode for proxy URL
+      'X-File-Name': fileName,
       'Content-Type': file.type || 'application/octet-stream',
     },
     body: file,
@@ -137,6 +227,21 @@ async function realB2Upload(
 
   if (!response.ok) {
     console.error('B2 Upload API error:', data);
+
+    // Handle specific error codes
+    if (response.status === 413) {
+      return {
+        success: false,
+        error: 'File too large for direct upload. Please try again or contact support.',
+      };
+    }
+    if (response.status === 408 || response.status === 504) {
+      return {
+        success: false,
+        error: 'Upload timeout. File may be too large or connection too slow.',
+      };
+    }
+
     return {
       success: false,
       error: data?.error || `Upload failed (${response.status})`,
