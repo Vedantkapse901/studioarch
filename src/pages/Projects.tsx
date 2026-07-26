@@ -87,6 +87,20 @@ export const PROJECTS = [
     size: 'large',
     locationmapurl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3318.7234567890!2d-118.6837!3d34.0195!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2z0JTQtdC50L3Qv9C40YM!5e0!3m2!1sen!2sus!4v1234567890'
   },
+  {
+    id: 7,
+    name: "Serenity Interiors",
+    location: "Dubai, UAE",
+    year: "2024",
+    category: "Interior",
+    description: "Luxurious interior design project showcasing sophisticated minimalism with premium materials and curated lighting to create harmonious living spaces.",
+    images: [
+      "/architecture-1.jpg",
+      "/architecture-2.jpg",
+    ],
+    size: 'large',
+    locationmapurl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3618.3234567890!2d55.2708!3d25.2048!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjXCsDEyJzE3LjMiTiA1NcKwMTYnMDUuMiJF!5e0!3m2!1sen!2sus!4v1234567890'
+  },
 ];
 
 export default function Projects() {
