@@ -15,8 +15,8 @@ export async function uploadToB2(
 
     if (onProgress) onProgress(10);
 
-    // Use direct localhost URL (no proxy needed, CORS enabled on server)
-    const apiUrl = 'http://localhost:3000/api/b2-upload';
+    // Use relative API endpoint (works on localhost and production)
+    const apiUrl = '/api/b2-upload';
 
     console.log('Using API endpoint:', apiUrl);
     console.log('Request details:', {
