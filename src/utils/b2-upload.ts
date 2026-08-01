@@ -15,8 +15,8 @@ export async function uploadToB2(
 
     if (onProgress) onProgress(10);
 
-    // Use relative API endpoint (works on localhost and production)
-    const apiUrl = '/api/b2-upload';
+    // Use Supabase Edge Function endpoint (no size limits!)
+    const apiUrl = 'https://qjjkfrncnarqifzkjnyc.supabase.co/functions/v1/b2-upload';
 
     console.log('Using API endpoint:', apiUrl);
     console.log('Request details:', {
